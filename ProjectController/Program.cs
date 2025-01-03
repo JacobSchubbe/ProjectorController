@@ -1,4 +1,4 @@
-﻿using ProjectController.GUI;using ProjectController.TCPCommunication;
+﻿using ProjectController.TCPCommunication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,14 +7,29 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add SignalR services
 builder.Services.AddSignalR();
+builder.Logging.AddConsole();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:8080")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 
 var app = builder.Build();
 
-// Map SignalR hub
-app.MapHub<GUIHub>("/GUIHub");
+app.UseRouting();
+app.UseCors(); // Add this before UseEndpoints
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapHub<GUIHub>("/GUIHub");
+});
 
 var tcp = new TcpConnection();
 tcp.RunCommand();
 
 // Run the application indefinitely
-// app.Run();
+app.Run();
