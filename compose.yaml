@@ -1,0 +1,6 @@
+﻿services:
+  projectcontroller:
+    image: projectcontroller
+    build:
+      context: .
+      dockerfile: ProjectController/Dockerfile
