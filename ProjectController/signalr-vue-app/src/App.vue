@@ -1,36 +1,84 @@
 <template>
   <div id="app">
     <h1>SignalR Vue App</h1>
-    <button @click="handleClick('Message 1')">Send Message 1</button>
-    <button @click="handleClick('Message 2')">Send Message 2</button>
+
+    <!-- Dropdown Menu -->
+    <label for="inputDropdown">Select Input:</label>
+    <select id="inputDropdown" v-model="state.selectedInput" @change="handleDropdownChange">
+      <option value="HDMI1">Input1</option>
+      <option value="HDMI2">Input2</option>
+      <option value="HDMI3">Input3</option>
+      <option value="LAN">LAN</option>
+    </select>
+
+    <button @click="handleClick(tcpConsts.SystemControl.PowerOff)">Power Off</button>
+    <button @click="handleClick(tcpConsts.SystemControl.PowerOn)">Power On</button>
+
     <ul>
-      <li v-for="(msg, index) in messages" :key="index">
-        {{ msg.user }}: {{ msg.message }}
+      <li v-for="(msg, index) in state.messages" :key="index">
+        {{ msg.message }}
       </li>
     </ul>
   </div>
 </template>
 
-<script>
-import { initializeSignalR, sendMessage } from './signalrService';
+<script lang="ts">
+import { reactive, onMounted } from "vue";
+import {initializeSignalR, sendSystemCommand} from "./signalrService"; // Ensure correct import path
+import * as tcpConsts from "./TcpConsts"; // Ensure correct import path
+
+type Message = {
+  message: string;
+}
 
 export default {
   name: 'App',
-  data() {
-    return {
-      messages: [] // Store received messages
-    };
-  },
-  mounted() {
-    // Initialize SignalR and set up message handler
-    initializeSignalR((user, message) => {
-      this.messages.push({ user, message }); // Add received messages to the list
+  setup() {
+    const state = reactive({
+      messages: [] as Message[],
+      selectedInput: "HDMI3",
     });
-  },
-  methods: {
-    handleClick(message) {
-      sendMessage('VueUser', message);
-    }
+
+    onMounted(() => {
+      // Assuming initializeSignalR is set up to push messages to `state.messages`
+      initializeSignalR((message: Message) => {
+        state.messages.push(message);
+      });
+    });
+
+    const handleClick = (command: tcpConsts.SystemControl) => {
+      sendSystemCommand(command);
+      console.log(`Command sent: ${command}`);
+    };
+
+    const handleDropdownChange = () => {
+      console.log(`Selected Input: ${state.selectedInput}`);
+
+      // Determine the command to send based on selected input
+      let command: tcpConsts.SystemControl;
+      switch (state.selectedInput) {
+        case "HDMI1":
+          command = tcpConsts.SystemControl.SourceHDMI1;
+          break;
+        case "HDMI2":
+          command = tcpConsts.SystemControl.SourceHDMI2;
+          break;
+        case "HDMI3":
+          command = tcpConsts.SystemControl.SourceHDMI3;
+          break;
+        case "LAN":
+          command = tcpConsts.SystemControl.SourceHDMILAN;
+          break;
+        default:
+          console.error("Invalid input selected");
+          return;
+      }
+
+      sendSystemCommand(command);
+      console.log(`Command sent: ${command}`);
+    };
+
+    return { state, handleDropdownChange, handleClick };
   }
 };
 </script>
@@ -39,5 +87,10 @@ export default {
 button {
   margin: 10px;
   padding: 10px;
+}
+
+select {
+  margin: 10px;
+  padding: 5px;
 }
 </style>

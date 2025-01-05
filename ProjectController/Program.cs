@@ -3,7 +3,7 @@
 var builder = WebApplication.CreateBuilder(args);
 
 // Register the singleton
-// builder.Services.AddSingleton<SingletonService>();
+builder.Services.AddSingleton<TcpConnection>();
 
 // Add SignalR services
 builder.Services.AddSignalR();
@@ -27,9 +27,6 @@ app.UseEndpoints(endpoints =>
 {
     endpoints.MapHub<GUIHub>("/GUIHub");
 });
-
-var tcp = new TcpConnection();
-tcp.RunCommand();
 
 // Run the application indefinitely
 app.Run();
