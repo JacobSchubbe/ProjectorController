@@ -1,4 +1,7 @@
-﻿using ProjectController.TCPCommunication;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using ProjectController.TCPCommunication;
 
 var builder = WebApplication.CreateBuilder(args);
 

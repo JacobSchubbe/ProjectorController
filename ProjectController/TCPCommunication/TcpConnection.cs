@@ -6,14 +6,83 @@ namespace ProjectController.TCPCommunication;
 
 public class TcpConnection
 {
-    private Socket? socket;
-
+    private readonly Socket? socket;
+    private readonly Queue<string> commandQueue = new();
+    private readonly SemaphoreSlim queueAccessSemaphore = new(1, 1);
+    
+    private readonly string host = "192.168.0.150";
+    private readonly int port = 3629;
+    
     public TcpConnection()
     {
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        if (!socket.Connected)
+        {
+            Console.WriteLine($"Connecting to {host}:{port}...");
+            socket.Connect(host, port);
+            SendCommand(SystemControlDictionary[SystemControl.StartCommunication]);
+            Console.WriteLine($"Connected to {host}:{port}.");
+        }
+        RunCommandQueue(CancellationToken.None);
+    }
+
+    private async void RunCommandQueue(CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    await queueAccessSemaphore.WaitAsync(token);
+                    try
+                    {
+                        if (commandQueue.TryDequeue(out var command))
+                        {
+                            SendCommand(command);
+                        }
+                    }
+                    finally
+                    {
+                        queueAccessSemaphore.Release();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Exception while trying to send a command: {e.Message}");
+                }
+            
+                await Task.Delay(TimeSpan.FromMilliseconds(25), token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine("Canceled all commands.");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"EXCEPTION: {e.Message}");
+        }
     }
     
-    static void SendCommand(Socket socket, string command)
+    public async Task QueueCommand(string[] commands)
+    {
+        foreach (var command in commands)
+        {
+            await queueAccessSemaphore.WaitAsync();
+            try
+            {
+                commandQueue.Enqueue(command);
+                Console.WriteLine($"Command enqueued: {command}");
+            }
+            finally
+            {
+                queueAccessSemaphore.Release();
+            }
+        }
+    }
+    
+    void SendCommand(string command)
     {
         if (command != SystemControlDictionary[SystemControl.StartCommunication])
         {
@@ -44,31 +113,5 @@ public class TcpConnection
             Console.WriteLine($"Received error response: {response}");
         }
         */
-    }
-
-    public void RunCommand()
-    {
-        string host = "192.168.0.150";
-        int port = 3629;
-
-        try
-        {
-            Console.WriteLine($"Connecting to {host}:{port}...");
-            
-            // Connect to the server
-            socket.Connect(host, port);
-            Console.WriteLine($"Connected to {host}:{port}.");
-
-            // Send commands
-            SendCommand(socket, SystemControlDictionary[SystemControl.StartCommunication]);
-            // SendCommand(socket, powerOn);
-            SendCommand(socket, SystemControlDictionary[SystemControl.PowerQuery]);
-            
-            socket.Disconnect(true);
-        }
-        catch (SocketException e)
-        {
-            Console.WriteLine($"Error with the TCP connection: {e.Message}");
-        }
     }
 }

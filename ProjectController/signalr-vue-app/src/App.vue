@@ -13,6 +13,7 @@
 
     <button @click="handleClick(tcpConsts.SystemControl.PowerOff)">Power Off</button>
     <button @click="handleClick(tcpConsts.SystemControl.PowerOn)">Power On</button>
+    <button @click="handleClick(tcpConsts.SystemControl.PowerQuery)">Query Power State</button>
 
     <ul>
       <li v-for="(msg, index) in state.messages" :key="index">
@@ -78,7 +79,7 @@ export default {
       console.log(`Command sent: ${command}`);
     };
 
-    return { state, handleDropdownChange, handleClick };
+    return { state, handleDropdownChange, handleClick, tcpConsts };
   }
 };
 </script>
