@@ -5,8 +5,6 @@ namespace ProjectController.TCPCommunication;
 
 public static class TCPConsts
 {
-    // =========== SYSTEM CONTROL ========================
-
     public enum SystemControl
     {
         StartCommunication,
@@ -23,6 +21,7 @@ public static class TCPConsts
         SourceHDMI2,
         SourceHDMI3,
         SourceHDMILAN,
+        SourceQuery,
         SourceListQuery,
     }
     
@@ -95,7 +94,8 @@ public static class TCPConsts
         { SystemControl.SourceHDMI2, "SOURCE A0" },
         { SystemControl.SourceHDMI3, "SOURCE C0" },
         { SystemControl.SourceHDMILAN, "SOURCE 53" },
-        { SystemControl.SourceListQuery, "SOURCELIST?" },
+        { SystemControl.SourceQuery, "SOURCE?" },
+        { SystemControl.SourceListQuery, "SOURCELISTA?" },
     };
     
     public static readonly Dictionary<SystemInformation, string> SystemInfoCommands = new Dictionary<SystemInformation, string>
@@ -159,7 +159,7 @@ public static class TCPConsts
         Power = 0x01
     }
 
-    private enum PowerStatus
+    public enum PowerStatus
     {
         StandbyNetworkOff = 0,
         LampOn = 1,
@@ -168,7 +168,23 @@ public static class TCPConsts
         StandbyNetworkOn = 4,
         AbnormalityStandby = 5,
     }
-    private static byte[] PowerStatusToBytes(PowerStatus status) => Encoding.ASCII.GetBytes($"PWR=0{(int)status}\r:");
-    private static readonly byte[] ErrorResponse = Encoding.ASCII.GetBytes("Err\r:");
+    public static byte[] PowerStatusToBytes(PowerStatus status) => Encoding.ASCII.GetBytes(PowerStatusToString(status));
+    private static string PowerStatusToString(PowerStatus status) => $"PWR=0{(int)status}\r:";
 
+    public static PowerStatus? StringToPowerStatus(string response)
+    {
+        PowerStatus? powerStatus = null;
+        foreach (var status in Enum.GetValues<PowerStatus>())
+        {
+            if (PowerStatusToString(status) != response) continue;
+            powerStatus = status;
+            break;
+        }
+        return powerStatus;
+    }
+    
+    
+
+    public static readonly byte[] ErrorResponse = Encoding.ASCII.GetBytes("Err\r:");
+    public static readonly string SuccessfulCommandResponse = ":";
 }

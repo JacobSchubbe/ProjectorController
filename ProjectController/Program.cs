@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Diagnostics;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ProjectController.TCPCommunication;
@@ -7,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Register the singleton
 builder.Services.AddSingleton<TcpConnection>();
+builder.Services.AddSingleton<GUIHub>();
 
 // Add SignalR services
 builder.Services.AddSignalR();
@@ -15,11 +17,21 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:8080")
+        policy.WithOrigins("http://192.168.0.153:8080")
+            .WithOrigins("http://192.168.0.153:8081")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
     });
+});
+
+// Ensure port proxy is set up (port forwarding for Vue server)
+ConfigurePortProxy();
+
+// Configure Kestrel server to listen on a custom port (optional)
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(8081);  // Ensure Kestrel is listening on 8081
 });
 
 var app = builder.Build();
@@ -32,4 +44,56 @@ app.UseEndpoints(endpoints =>
 });
 
 // Run the application indefinitely
+app.Lifetime.ApplicationStopping.Register(RemovePortProxy);
 app.Run();
+
+void ConfigurePortProxy()
+{
+    var netshCommand = "netsh interface portproxy add v4tov4 listenport=8081 connectaddress=192.168.0.153 connectport=8080";
+    ProcessNetshCommand(netshCommand);
+}
+
+void RemovePortProxy()
+{
+    var netshCommand = "netsh interface portproxy delete v4tov4 listenport=8081";
+    ProcessNetshCommand(netshCommand);
+}
+
+void ProcessNetshCommand(string psCommand)
+{
+    Console.WriteLine("netsh: " + psCommand);
+    try
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "powershell",
+            Arguments = psCommand,
+            Verb = "runas", // Elevate to admin
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(startInfo);
+
+        string output = process?.StandardOutput.ReadToEnd().Trim();
+        string error = process?.StandardError.ReadToEnd().Trim();
+
+        process?.WaitForExit();
+
+        if (!string.IsNullOrEmpty(output))
+        {
+            Console.WriteLine("PowerShell Output: " + output);
+        }
+
+        if (!string.IsNullOrEmpty(error))
+        {
+            Console.WriteLine("PowerShell Error: " + error);
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error running PowerShell command: {ex.Message}");
+    }
+}

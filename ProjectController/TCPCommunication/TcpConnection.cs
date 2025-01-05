@@ -7,12 +7,13 @@ namespace ProjectController.TCPCommunication;
 public class TcpConnection
 {
     private readonly Socket? socket;
-    private readonly Queue<string> commandQueue = new();
+    private readonly Queue<(SystemControl command, Func<SystemControl, string, Task> callback)> commandQueue = new();
     private readonly SemaphoreSlim queueAccessSemaphore = new(1, 1);
     
     private readonly string host = "192.168.0.150";
     private readonly int port = 3629;
-    
+    private readonly byte[] buffer = new byte[1024];
+
     public TcpConnection()
     {
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -20,10 +21,16 @@ public class TcpConnection
         {
             Console.WriteLine($"Connecting to {host}:{port}...");
             socket.Connect(host, port);
-            SendCommand(SystemControlDictionary[SystemControl.StartCommunication]);
+            // ClearBuffer();
+            SendCommand(SystemControl.StartCommunication);
             Console.WriteLine($"Connected to {host}:{port}.");
         }
         RunCommandQueue(CancellationToken.None);
+    }
+
+    private void ClearBuffer()
+    {
+        socket?.Receive(buffer);
     }
 
     private async void RunCommandQueue(CancellationToken token)
@@ -37,9 +44,10 @@ public class TcpConnection
                     await queueAccessSemaphore.WaitAsync(token);
                     try
                     {
-                        if (commandQueue.TryDequeue(out var command))
+                        if (commandQueue.TryDequeue(out var commandKvp))
                         {
-                            SendCommand(command);
+                            var response = SendCommand(commandKvp.command);
+                            await commandKvp.callback(commandKvp.command, response);
                         }
                     }
                     finally
@@ -65,14 +73,14 @@ public class TcpConnection
         }
     }
     
-    public async Task QueueCommand(string[] commands)
+    public async Task QueueCommand(SystemControl[] commands, Func<SystemControl, string, Task> callback)
     {
         foreach (var command in commands)
         {
             await queueAccessSemaphore.WaitAsync();
             try
             {
-                commandQueue.Enqueue(command);
+                commandQueue.Enqueue((command, callback));
                 Console.WriteLine($"Command enqueued: {command}");
             }
             finally
@@ -82,36 +90,31 @@ public class TcpConnection
         }
     }
     
-    void SendCommand(string command)
+    string SendCommand(SystemControl command)
     {
-        if (command != SystemControlDictionary[SystemControl.StartCommunication])
+        string commandStr;
+        if (command != SystemControl.StartCommunication)
         {
-            command = $"{command}\r";
+            commandStr = $"{SystemControlDictionary[command]}\r";
+        }
+        else
+        {
+            commandStr = $"{SystemControlDictionary[command]}";
         }
 
-        byte[] commandBytes = Encoding.ASCII.GetBytes(command);
+        byte[] commandBytes = Encoding.ASCII.GetBytes(commandStr);
         socket.Send(commandBytes);
 
-        Console.WriteLine($"Sent command: {command}");
+        Console.WriteLine($"Sent command: {commandStr}");
 
         // Receive the response
-        byte[] buffer = new byte[1024];
         int bytesRead = socket.Receive(buffer);
-        string response = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-
-        Console.WriteLine($"Received response: {response}");
-
-        // Uncomment to handle error responses
-        /*
-        if (response == "Err\r:")
-        {
-            byte[] errorQueryBytes = Encoding.ASCII.GetBytes(ErrorQuery + "\r");
-            socket.Send(errorQueryBytes);
-            Console.WriteLine($"Sent command: {ErrorQuery}");
-            bytesRead = socket.Receive(buffer);
-            response = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-            Console.WriteLine($"Received error response: {response}");
-        }
-        */
+        string rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+        Console.WriteLine($"Received response: {rawResponse}");
+        var status = StringToPowerStatus(rawResponse);
+        if (status == null) 
+            return rawResponse;
+        Console.WriteLine($"Received response: {status.ToString()}");
+        return status.ToString();
     }
 }

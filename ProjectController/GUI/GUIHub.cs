@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.SignalR;
 using ProjectController.TCPCommunication;
 using static ProjectController.TCPCommunication.TCPConsts;
@@ -11,15 +12,55 @@ public class GUIHub : Hub
         this.tcpConnection = tcpConnection;
     }
     
-    // Receive a message from a client
     public async Task ReceiveSystemCommand(SystemControl command)
     {
         // Log or handle the received message
         Console.WriteLine($"Received command: {command.ToString()}");
 
-        await tcpConnection.QueueCommand([SystemControlDictionary[command]]);
+        await tcpConnection.QueueCommand([command], SendCommandResponseToClients);
+    }
+    
+    public async Task ReceiveSystemQuery(SystemControl command)
+    {
+        // Log or handle the received message
+        Console.WriteLine($"Received query: {command.ToString()}");
+
+        await tcpConnection.QueueCommand([command], SendQueryResponseToClients);
+    }
+
+    private async Task SendCommandResponseToClients(SystemControl commandType, string response)
+    {
+        if (response == SuccessfulCommandResponse)
+            response = "Success!";
         
         // Send the message to all connected clients
-        await Clients.All.SendAsync("ReceiveMessage", $"{command.ToString()} was successfully executed.");
+        await Clients.All.SendAsync("ReceiveMessage", new
+        {
+            message = $"{commandType} was successfully executed. Response: {response}"
+        });
+    }
+
+    private async Task SendQueryResponseToClients(SystemControl queryType, string response)
+    {
+        response = response.Replace("=", " ").TrimEnd(':', '\r');
+        SystemControl? currentStatus = null;
+        foreach (var kvp in SystemControlDictionary)
+        {
+            if (kvp.Value != response) continue;
+            currentStatus = kvp.Key;
+            break;
+        }
+
+        if (currentStatus == null)
+        {       
+            Console.WriteLine($"No status matching current status: {response}");
+            return;
+        }
+
+        Console.WriteLine($"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
+        await Clients.All.SendAsync("ReceiveQueryResponse", new
+        {
+            queryType, currentStatus
+        });
     }
 }
