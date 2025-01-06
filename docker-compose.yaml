@@ -9,6 +9,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - CustomConfig__IPAddress=localhost
       - CustomConfig__DebugVersion=false
+    ports:
+      - "5000:5000"  # Expose backend port for external access
 
   frontend:
     image: projectcontrollergui

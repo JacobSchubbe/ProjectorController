@@ -7,14 +7,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<TcpConnection>();
 builder.Services.AddSingleton<GUIHub>();
 
-var debugVersion = bool.Parse(builder.Configuration.GetSection("CustomConfig")["DebugVersion"]);
+var customConfig = builder.Configuration.GetSection("CustomConfig");
+var debugVersion = bool.Parse(customConfig["DebugVersion"]);
+string IPAddress = customConfig["IPAddress"];
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
 if (allowedOrigins == null)
     throw new ApplicationException("Allowed origins is null");
+allowedOrigins = allowedOrigins.Concat([$"http://{IPAddress}:8080", $"http://{IPAddress}:8081"]).ToArray();
 
 // Add SignalR services
 builder.Services.AddSignalR();
 builder.Logging.AddConsole();
+Console.WriteLine($"Allowed Origins: {string.Join(",", allowedOrigins)}");
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -35,7 +39,7 @@ if (debugVersion)
 // Configure Kestrel server to listen on a custom port (optional)
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.ListenAnyIP(8081);  // Ensure Kestrel is listening on 8081
+    serverOptions.ListenAnyIP(8081);
 });
 
 var app = builder.Build();
