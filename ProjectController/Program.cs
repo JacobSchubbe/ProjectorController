@@ -1,7 +1,4 @@
 ﻿using System.Diagnostics;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using ProjectController.TCPCommunication;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<TcpConnection>();
 builder.Services.AddSingleton<GUIHub>();
 
+var debugVersion = bool.Parse(builder.Configuration.GetSection("CustomConfig")["DebugVersion"]);
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
+if (allowedOrigins == null)
+    throw new ApplicationException("Allowed origins is null");
+
 // Add SignalR services
 builder.Services.AddSignalR();
 builder.Logging.AddConsole();
@@ -17,8 +19,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://192.168.0.153:8080")
-            .WithOrigins("http://192.168.0.153:8081")
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -26,7 +27,10 @@ builder.Services.AddCors(options =>
 });
 
 // Ensure port proxy is set up (port forwarding for Vue server)
-ConfigurePortProxy();
+if (debugVersion)
+{
+    ConfigurePortProxy();
+}
 
 // Configure Kestrel server to listen on a custom port (optional)
 builder.WebHost.ConfigureKestrel(serverOptions =>
@@ -44,12 +48,17 @@ app.UseEndpoints(endpoints =>
 });
 
 // Run the application indefinitely
-app.Lifetime.ApplicationStopping.Register(RemovePortProxy);
+if (debugVersion)
+{
+    app.Lifetime.ApplicationStopping.Register(RemovePortProxy);
+}
 app.Run();
+
+#region Proxy Port (Windows only!)
 
 void ConfigurePortProxy()
 {
-    var netshCommand = "netsh interface portproxy add v4tov4 listenport=8081 connectaddress=192.168.0.153 connectport=8080";
+    var netshCommand = "netsh interface portproxy add v4tov4 listenport=8081 connectaddress=localhost connectport=8080";
     ProcessNetshCommand(netshCommand);
 }
 
@@ -97,3 +106,5 @@ void ProcessNetshCommand(string psCommand)
         Console.WriteLine($"Error running PowerShell command: {ex.Message}");
     }
 }
+
+#endregion

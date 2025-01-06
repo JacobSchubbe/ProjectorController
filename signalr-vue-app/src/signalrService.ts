@@ -21,11 +21,13 @@ export const initializeSignalR = (
     onQueryResponseReceived:OnQueryResponseReceived,
     connectionStatusUpdater:ConnectionStatusUpdater
 ) => {
+    const apiUrl = process.env.VUE_APP_API_URL || '192.168.0.153';
+    console.log(`Connection API URL: ${apiUrl}`);
     connection = new signalR.HubConnectionBuilder()
-        .withUrl('http://192.168.0.153:5000/GUIHub') // Replace with your backend's URL
+        .withUrl(`http://${apiUrl}:5000/GUIHub`)
         .withAutomaticReconnect()
         .build();
-
+    
     connection.on('ReceiveMessage', (message:Message) => {
         if (onMessageReceived) {
             onMessageReceived(message);
@@ -52,11 +54,21 @@ const reconnectToSignalR = async (connectionStatusUpdater:any) => {
         .catch(err => console.error('SignalR connection error: ', err));
 }
 
+
+
+
+
+
 const queryForInitialStatuses = () => {
     console.log("Sending source query")
     sendSystemQuery(consts.SystemControl.SourceQuery);
     console.log("Sent source query")
 }
+
+
+
+
+
 
 export const sendSystemCommand = (command:consts.SystemControl) => {
     console.log(`Sending ${command}`);
