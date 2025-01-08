@@ -4,21 +4,14 @@ services:
     image: projectcontroller
     build:
       context: .
-      dockerfile: ProjectController/Dockerfile
+      dockerfile: Dockerfile
+#      args:
+#        - VUE_APP_API_URL=backend
+#        - VUE_APP_PORT=8081
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - CustomConfig__IPAddress=localhost
       - CustomConfig__DebugVersion=false
     ports:
-      - "5000:5000"  # Expose backend port for external access
-
-  frontend:
-    image: projectcontrollergui
-    build:
-      context: .
-      dockerfile: signalr-vue-app/Dockerfile
-      args:
-        - VUE_APP_API_URL=backend
-        - VUE_APP_PORT=8081
-    ports:
-      - "8081:80" # Vue.js frontend exposed on this port
+      - "8081:80"
+      - "19521:19521"

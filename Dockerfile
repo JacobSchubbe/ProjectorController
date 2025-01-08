@@ -1,0 +1,29 @@
+﻿FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY ["ProjectController/ProjectController.csproj", "ProjectController/"]
+RUN dotnet restore "ProjectController/ProjectController.csproj"
+COPY . .
+WORKDIR "/src/ProjectController"
+RUN dotnet publish "ProjectController.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
+FROM node:18-alpine AS frontend-builder
+WORKDIR /signalr-vue-app
+COPY ./signalr-vue-app/package*.json ./
+RUN npm install
+COPY ./signalr-vue-app ./
+RUN npm run build
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
+WORKDIR /app
+COPY --from=build /app/publish /app/
+RUN apk add --no-cache nginx icu-libs
+COPY nginx/nginx.conf /etc/nginx/http.d/default.conf
+COPY --from=frontend-builder /signalr-vue-app/dist /usr/share/nginx/html
+
+EXPOSE 80
+EXPOSE 19521
+
+COPY ./entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

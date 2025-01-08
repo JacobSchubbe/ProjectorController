@@ -1,6 +1,7 @@
 const { defineConfig } = require('@vue/cli-service')
-const appPort = process.env.VUE_APP_PORT || '8080';
+const appPort = process.env.VUE_APP_PORT || '8081';
 module.exports = defineConfig({
+  publicPath: '/',
   transpileDependencies: true,
   devServer: {
     host: '0.0.0.0',  // This allows external devices to access it

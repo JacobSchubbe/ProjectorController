@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Microsoft.Extensions.FileProviders;
 using ProjectController.TCPCommunication;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,7 +14,7 @@ string IPAddress = customConfig["IPAddress"];
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
 if (allowedOrigins == null)
     throw new ApplicationException("Allowed origins is null");
-allowedOrigins = allowedOrigins.Concat([$"http://{IPAddress}:8080", $"http://{IPAddress}:8081"]).ToArray();
+// allowedOrigins = allowedOrigins.Concat([$"http://{IPAddress}:8080", $"http://{IPAddress}:8081"]).ToArray();
 
 // Add SignalR services
 builder.Services.AddSignalR();
@@ -33,7 +34,6 @@ builder.Services.AddCors(options =>
 // Ensure port proxy is set up (port forwarding for Vue server)
 if (debugVersion)
 {
-    ConfigurePortProxy();
 }
 
 // Configure Kestrel server to listen on a custom port (optional)
@@ -54,15 +54,15 @@ app.UseEndpoints(endpoints =>
 // Run the application indefinitely
 if (debugVersion)
 {
-    app.Lifetime.ApplicationStopping.Register(RemovePortProxy);
 }
+
 app.Run();
 
 #region Proxy Port (Windows only!)
 
 void ConfigurePortProxy()
 {
-    var netshCommand = "netsh interface portproxy add v4tov4 listenport=8081 connectaddress=localhost connectport=8080";
+    var netshCommand = "netsh interface portproxy add v4tov4 listenport=8081 connectaddress=192.168.0.153 connectport=8080";
     ProcessNetshCommand(netshCommand);
 }
 
