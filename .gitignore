@@ -1,0 +1,4 @@
+# Ignore directories
+bin/
+obj/
+.idea/

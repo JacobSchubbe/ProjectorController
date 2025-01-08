@@ -24,7 +24,7 @@ export const initializeSignalR = (
     const apiUrl = process.env.VUE_APP_API_URL || '192.168.0.153';
     console.log(`Connection API URL: ${apiUrl}`);
     connection = new signalR.HubConnectionBuilder()
-        .withUrl(`http://${apiUrl}:5000/GUIHub`)
+        .withUrl(`http://${apiUrl}:19521/GUIHub`)
         .withAutomaticReconnect()
         .build();
     
