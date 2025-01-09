@@ -1,5 +1,6 @@
 import * as signalR from '@microsoft/signalr';
 import * as consts from './TcpConsts';
+import {KeyControl} from "./TcpConsts";
 
 let connection:signalR.HubConnection;
 
@@ -70,6 +71,13 @@ const queryForInitialStatuses = () => {
 
 
 
+export const sendKeyCommand = (command:consts.KeyControl) => {
+    console.log(`Sending ${command}`);
+    if (connection) {
+        connection.invoke('ReceiveKeyCommand', command)
+            .catch(err => console.error('SignalR send error: ', err));
+    }
+};
 export const sendSystemCommand = (command:consts.SystemControl) => {
     console.log(`Sending ${command}`);
     if (connection) {

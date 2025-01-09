@@ -78,7 +78,7 @@ public static class TCPConsts
         KeyLinkMenu
     }
 
-    public static readonly Dictionary<SystemControl, string> SystemControlDictionary = new()
+    public static readonly Dictionary<SystemControl, string> SystemControlCommands = new()
     {
         { SystemControl.StartCommunication, "ESC/VP.net\x10\x03\x00\x00\x00\x00" },
         { SystemControl.PowerQuery, "PWR?" },

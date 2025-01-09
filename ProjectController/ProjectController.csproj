@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <TargetFramework>net8.0</TargetFramework>
+<!--        <OutputType>Exe</OutputType>-->
+        <TargetFramework>net6.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
@@ -13,9 +13,6 @@
         <Link>.dockerignore</Link>
       </Content>
     </ItemGroup>
-<!--    <ItemGroup>-->
-<!--        <Content Include="../signlar-vue-app/dist/**" CopyToPublishDirectory="Always" />-->
-<!--    </ItemGroup>-->
     <ItemGroup>
       <Folder Include="SerialCommunication\" />
     </ItemGroup>

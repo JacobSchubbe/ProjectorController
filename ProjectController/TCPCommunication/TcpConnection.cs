@@ -7,14 +7,15 @@ namespace ProjectController.TCPCommunication;
 public class TcpConnection
 {
     private readonly Socket? socket;
-    private readonly Queue<(SystemControl command, Func<SystemControl, string, Task> callback)> commandQueue = new();
+    private readonly Queue<(SystemControl command, Func<SystemControl, string, Task> callback)> systemCommandQueue = new();
+    private readonly Queue<(KeyControl command, Func<KeyControl, string, Task> callback)> keyCommandQueue = new();
     private readonly SemaphoreSlim queueAccessSemaphore = new(1, 1);
     private readonly SemaphoreSlim connectionSemaphore = new(1, 1);
     
     private readonly string host = "192.168.0.150";
     private readonly int port = 3629;
     private readonly byte[] buffer = new byte[1024];
-    private readonly byte ETX = ":"u8.ToArray()[0];
+    private readonly byte ETX = Encoding.ASCII.GetBytes(":")[0];
     
     public TcpConnection()
     {
@@ -65,6 +66,7 @@ public class TcpConnection
 
     private async void RunCommandQueue(CancellationToken token)
     {
+        var index = 0;
         try
         {
             while (!token.IsCancellationRequested)
@@ -74,15 +76,28 @@ public class TcpConnection
                     await queueAccessSemaphore.WaitAsync(token);
                     try
                     {
-                        if (commandQueue.TryDequeue(out var commandKvp))
+                        if (index % 2 == 0)
                         {
-                            await CheckConnection(token);
-                            var response = SendCommand(commandKvp.command);
-                            await commandKvp.callback(commandKvp.command, response);
+                            if (systemCommandQueue.TryDequeue(out var commandKvp))
+                            {
+                                await CheckConnection(token);
+                                var response = SendCommand(commandKvp.command);
+                                await commandKvp.callback(commandKvp.command, response);
+                            }
+                        }
+                        else
+                        {
+                            if (keyCommandQueue.TryDequeue(out var commandKvp))
+                            {
+                                await CheckConnection(token);
+                                var response = SendCommand(commandKvp.command);
+                                await commandKvp.callback(commandKvp.command, response);
+                            }
                         }
                     }
                     finally
                     {
+                        index++;
                         queueAccessSemaphore.Release();
                     }
                 }
@@ -111,7 +126,24 @@ public class TcpConnection
             await queueAccessSemaphore.WaitAsync();
             try
             {
-                commandQueue.Enqueue((command, callback));
+                systemCommandQueue.Enqueue((command, callback));
+                Console.WriteLine($"Command enqueued: {command}");
+            }
+            finally
+            {
+                queueAccessSemaphore.Release();
+            }
+        }
+    }
+    
+    public async Task QueueCommand(KeyControl[] commands, Func<KeyControl, string, Task> callback)
+    {
+        foreach (var command in commands)
+        {
+            await queueAccessSemaphore.WaitAsync();
+            try
+            {
+                keyCommandQueue.Enqueue((command, callback));
                 Console.WriteLine($"Command enqueued: {command}");
             }
             finally
@@ -126,12 +158,33 @@ public class TcpConnection
         string commandStr;
         if (command != SystemControl.StartCommunication)
         {
-            commandStr = $"{SystemControlDictionary[command]}\r";
+            commandStr = $"{SystemControlCommands[command]}\r";
         }
         else
         {
-            commandStr = $"{SystemControlDictionary[command]}";
+            commandStr = $"{SystemControlCommands[command]}";
         }
+
+        byte[] commandBytes = Encoding.ASCII.GetBytes(commandStr);
+        socket.Send(commandBytes);
+
+        Console.WriteLine($"Sent command: {commandStr}");
+
+        int bytesRead = socket.Receive(buffer);
+        string rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+        // string rawResponse = ReceiveData();
+        
+        Console.WriteLine($"Received response: {rawResponse}");
+        var status = StringToPowerStatus(rawResponse);
+        if (status == null) 
+            return rawResponse;
+        Console.WriteLine($"Received response: {status.ToString()}");
+        return status.ToString();
+    }
+    
+    string SendCommand(KeyControl command)
+    {
+        var commandStr = $"{KeyControlCommands[command]}";
 
         byte[] commandBytes = Encoding.ASCII.GetBytes(commandStr);
         socket.Send(commandBytes);
