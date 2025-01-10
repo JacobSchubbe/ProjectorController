@@ -1,6 +1,5 @@
 import * as signalR from '@microsoft/signalr';
 import * as consts from './TcpConsts';
-import {KeyControl} from "./TcpConsts";
 
 let connection:signalR.HubConnection;
 
@@ -36,7 +35,7 @@ export const initializeSignalR = (
         }
     });
     
-    connection.on('ReceiveQueryResponse', (response:QueryResponse) => {
+    connection.on('ReceiveProjectorQueryResponse', (response:QueryResponse) => {
         console.log(`QueryType: ${response.queryType}, Current Status: ${response.currentStatus}`);
         if (onQueryResponseReceived) {
             onQueryResponseReceived(response);
@@ -63,33 +62,22 @@ const reconnectToSignalR = async (connectionStatusUpdater:any) => {
 
 const queryForInitialStatuses = () => {
     console.log("Sending source query")
-    sendSystemQuery(consts.SystemControl.SourceQuery);
+    sendProjectorQuery(consts.ProjectorCommands.SystemControlSourceQuery);
     console.log("Sent source query")
 }
 
 
-
-
-
-
-export const sendKeyCommand = (command:consts.KeyControl) => {
+export const sendProjectorCommands = (command:consts.ProjectorCommands) => {
     console.log(`Sending ${command}`);
     if (connection) {
-        connection.invoke('ReceiveKeyCommand', command)
+        connection.invoke('ReceiveProjectorCommand', command)
             .catch(err => console.error('SignalR send error: ', err));
     }
 };
-export const sendSystemCommand = (command:consts.SystemControl) => {
+export const sendProjectorQuery = (command:consts.ProjectorCommands) => {
     console.log(`Sending ${command}`);
     if (connection) {
-        connection.invoke('ReceiveSystemCommand', command)
-            .catch(err => console.error('SignalR send error: ', err));
-    }
-};
-export const sendSystemQuery = (command:consts.SystemControl) => {
-    console.log(`Sending ${command}`);
-    if (connection) {
-        connection.invoke('ReceiveSystemQuery', command)
+        connection.invoke('ReceiveProjectorQuery', command)
             .catch(err => console.error('SignalR send error: ', err));
     }
 };

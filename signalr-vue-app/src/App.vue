@@ -6,10 +6,10 @@
     <div >
       <label for="inputDropdown">Select Input:</label>
       <select id="inputDropdown" v-model="state.selectedInput" @change="handleDropdownChange">
-        <option :value=tcpConsts.SystemControl.SourceHDMI1>Input1</option>
-        <option :value=tcpConsts.SystemControl.SourceHDMI2>Input2</option>
-        <option :value=tcpConsts.SystemControl.SourceHDMI3>Input3</option>
-        <option :value=tcpConsts.SystemControl.SourceLAN>LAN</option>
+        <option :value=tcpConsts.ProjectorCommands.SourceHDMI1>Input1</option>
+        <option :value=tcpConsts.ProjectorCommands.SourceHDMI2>Input2</option>
+        <option :value=tcpConsts.ProjectorCommands.SourceHDMI3>Input3</option>
+        <option :value=tcpConsts.ProjectorCommands.SourceLAN>LAN</option>
       </select>
       <label>
         Connected: {{state.connected}}
@@ -17,20 +17,20 @@
     </div>
 
     <div>
-      <button @click="handleClickSystemControl(tcpConsts.SystemControl.PowerOff)">Power Off</button>
-      <button @click="handleClickSystemControl(tcpConsts.SystemControl.PowerOn)">Power On</button>
-      <button @click="handleClickSystemControl(tcpConsts.SystemControl.PowerQuery)">Query Power State</button>
+      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.SystemControlPowerOff)">Power Off</button>
+      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.SystemControlPowerOn)">Power On</button>
+      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.SystemControlPowerQuery)">Query Power State</button>
     </div>
     <div class="">
-      <button @click="handleClickKeyCommands(tcpConsts.KeyControl.KeyUp)">Up</button>
+      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlUp)">Up</button>
     </div>
     <div>
-      <button @click="handleClickKeyCommands(tcpConsts.KeyControl.KeyLeft)">Left</button>
-      <button @click="handleClickKeyCommands(tcpConsts.KeyControl.KeyEnter)">Enter</button>
-      <button @click="handleClickKeyCommands(tcpConsts.KeyControl.KeyRight)">Right</button>
+      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlLeft)">Left</button>
+      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlEnter)">Enter</button>
+      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlRight)">Right</button>
     </div>
     <div>
-      <button @click="handleClickKeyCommands(tcpConsts.KeyControl.KeyDown)">Down</button>
+      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlDown)">Down</button>
     </div>
     
     
@@ -66,8 +66,8 @@ export default {
 
     const handleQueryResponse = (queryType:Number, currentStatus:Number) => {
       switch (queryType) {
-        case tcpConsts.SystemControl.SourceQuery:
-          state.selectedInput = currentStatus as tcpConsts.SystemControl;
+        case tcpConsts.ProjectorCommands.SystemControlSourceQuery:
+          state.selectedInput = currentStatus as tcpConsts.ProjectorCommands;
           break;
         default:
           console.error("Invalid input selected");
@@ -75,18 +75,14 @@ export default {
       }
     }
     
-    const handleClickSystemControl = (command: tcpConsts.SystemControl) => {
-      signalr.sendSystemCommand(command);
-      console.log(`Command sent: ${command}`);
-    };
-    const handleClickKeyCommands = (command: tcpConsts.KeyControl) => {
-      signalr.sendKeyCommand(command);
+    const handleClickProjectorCommands = (command: tcpConsts.ProjectorCommands) => {
+      signalr.sendProjectorCommands(command);
       console.log(`Command sent: ${command}`);
     };
 
     const handleDropdownChange = () => {
       console.log(`Selected Input: ${state.selectedInput}`);
-      signalr.sendSystemCommand(state.selectedInput);
+      signalr.sendProjectorCommands(state.selectedInput);
       console.log(`Command sent: ${state.selectedInput}`);
 
       // // Determine the command to send based on selected input
@@ -111,7 +107,7 @@ export default {
 
     };
 
-    return { state, handleDropdownChange, handleClickSystemControl, handleClickKeyCommands, tcpConsts };
+    return { state, handleDropdownChange, handleClickProjectorCommands, tcpConsts };
   }
 };
 </script>
