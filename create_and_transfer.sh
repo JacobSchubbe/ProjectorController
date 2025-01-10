@@ -8,34 +8,44 @@ REMOTE_DIR="/home/jacob.schubbe/projectorcontroller"                # Replace wi
 DOCKER_COMPOSE_PATH="docker-compose.yaml"   # Replace with your Docker Compose file path
 DOCKER_REMOTE_COMPOSE_DIR="$REMOTE_DIR/"     # Remote location for the docker-compose.yml file
 
-#echo "Docker compose build"
-#docker compose build
+echo "Docker compose build"
+docker compose build --no-cache
 
-#echo "Saving docker image to TAR"
-#docker save -o $TAR_FILE $IMAGE_NAME
-#
-#echo "Transferring TAR to the remote machine"
-#scp $TAR_FILE $TARGET_HOST:$REMOTE_DIR/
-#
-#echo "Transferring docker compose configuration"
-#scp $DOCKER_COMPOSE_PATH $TARGET_HOST:$DOCKER_REMOTE_COMPOSE_DIR
-#
-#echo "Stopping any running containers"
-#ssh $TARGET_HOST "(cd $DOCKER_REMOTE_COMPOSE_DIR && docker compose down)"
-#
-#echo "Loading image on the remote machine"
-#ssh $TARGET_HOST "docker load < $REMOTE_DIR/$TAR_FILE"
-#
-#echo "Listing Docker images on the remote machine"
-#ssh $TARGET_HOST "docker images"
-#
-echo "Starting Docker Compose on the remote machine"
-ssh $TARGET_HOST "(cd $DOCKER_REMOTE_COMPOSE_DIR && docker compose up -d)"
-#
-#echo "Cleanup: removing the transferred TAR on the remote machine"
-#ssh $TARGET_HOST "rm $REMOTE_DIR/$TAR_FILE"
-#
-#echo "Cleanup: removing the original TAR from host machine"
-#rm $TAR_FILE
+echo "Saving docker image to TAR"
+docker save -o $TAR_FILE $IMAGE_NAME
+
+echo "Transferring TAR and Docker Compose file to the remote machine"
+scp $TAR_FILE $DOCKER_COMPOSE_PATH $TARGET_HOST:$REMOTE_DIR/
+
+echo "Running remote commands in a single SSH session"
+ssh $TARGET_HOST << EOF
+    set -e  # Exit on error
+    echo "Stopping any running containers"
+    cd $DOCKER_REMOTE_COMPOSE_DIR && docker-compose down
+
+    echo "Removing old image"
+    docker rmi $IMAGE_NAME || true  # Do not exit if image is not found
+    docker rmi \$(docker images -f "dangling=true" -q) || true
+
+    echo "Loading Docker image from TAR"
+    docker load < $REMOTE_DIR/$TAR_FILE
+
+    echo "Starting Docker Compose"
+    docker-compose up -d
+
+    echo "Checking running state of container"
+    docker ps -a
+
+    echo "Cleanup: removing the transferred TAR"
+    rm $REMOTE_DIR/$TAR_FILE
+EOF
+
+echo "Cleanup: removing the original TAR from host machine"
+rm $TAR_FILE
 
 echo "Done!"
+
+#docker rmi $(docker images -f "dangling=true" -q)
+
+#docker run -d -p 8081:80 -p 19521:19521 -e ASPNETCORE_ENVIRONMENT=Production -e CustomConfig__IPAddress=localhost -e CustomConfig__
+#DebugVersion=false projectorcontroller

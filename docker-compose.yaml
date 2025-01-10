@@ -6,6 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        - TARGETPLATFORM=linux/arm64
+        - VUE_APP_API_URL=192.168.0.174
         - VUE_APP_PORT=8081
     environment:
       - ASPNETCORE_ENVIRONMENT=Production

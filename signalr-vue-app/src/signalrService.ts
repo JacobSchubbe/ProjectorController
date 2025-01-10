@@ -22,6 +22,7 @@ export const initializeSignalR = (
     onQueryResponseReceived:OnQueryResponseReceived,
     connectionStatusUpdater:ConnectionStatusUpdater
 ) => {
+    console.log('Environment variables:', process.env);
     const apiUrl = process.env.VUE_APP_API_URL || '192.168.0.153';
     console.log(`Connection API URL: ${apiUrl}`);
     connection = new signalR.HubConnectionBuilder()
