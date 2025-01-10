@@ -1,5 +1,5 @@
 const { defineConfig } = require('@vue/cli-service')
-const appPort = process.env.VUE_APP_PORT || '8081';
+const appPort = process.env.VUE_APP_PORT || '8080';
 module.exports = defineConfig({
   publicPath: '/',
   transpileDependencies: true,

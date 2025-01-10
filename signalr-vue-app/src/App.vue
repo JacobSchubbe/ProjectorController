@@ -16,9 +16,22 @@
       </label>
     </div>
 
-    <button @click="handleClick(tcpConsts.SystemControl.PowerOff)">Power Off</button>
-    <button @click="handleClick(tcpConsts.SystemControl.PowerOn)">Power On</button>
-    <button @click="handleClick(tcpConsts.SystemControl.PowerQuery)">Query Power State</button>
+    <div>
+      <button @click="handleClickSystemControl(tcpConsts.SystemControl.PowerOff)">Power Off</button>
+      <button @click="handleClickSystemControl(tcpConsts.SystemControl.PowerOn)">Power On</button>
+      <button @click="handleClickSystemControl(tcpConsts.SystemControl.PowerQuery)">Query Power State</button>
+    </div>
+    <div class="">
+      <button @click="handleClickKeyCommands(tcpConsts.KeyControl.KeyUp)">Up</button>
+    </div>
+    <div>
+      <button @click="handleClickKeyCommands(tcpConsts.KeyControl.KeyLeft)">Left</button>
+      <button @click="handleClickKeyCommands(tcpConsts.KeyControl.KeyEnter)">Enter</button>
+      <button @click="handleClickKeyCommands(tcpConsts.KeyControl.KeyRight)">Right</button>
+    </div>
+    <div>
+      <button @click="handleClickKeyCommands(tcpConsts.KeyControl.KeyDown)">Down</button>
+    </div>
     
     
     <ul>
@@ -62,8 +75,12 @@ export default {
       }
     }
     
-    const handleClick = (command: tcpConsts.SystemControl) => {
+    const handleClickSystemControl = (command: tcpConsts.SystemControl) => {
       signalr.sendSystemCommand(command);
+      console.log(`Command sent: ${command}`);
+    };
+    const handleClickKeyCommands = (command: tcpConsts.KeyControl) => {
+      signalr.sendKeyCommand(command);
       console.log(`Command sent: ${command}`);
     };
 
@@ -94,7 +111,7 @@ export default {
 
     };
 
-    return { state, handleDropdownChange, handleClick, tcpConsts };
+    return { state, handleDropdownChange, handleClickSystemControl, handleClickKeyCommands, tcpConsts };
   }
 };
 </script>

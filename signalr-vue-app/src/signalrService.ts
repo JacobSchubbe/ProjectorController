@@ -1,5 +1,6 @@
 import * as signalR from '@microsoft/signalr';
 import * as consts from './TcpConsts';
+import {KeyControl} from "./TcpConsts";
 
 let connection:signalR.HubConnection;
 
@@ -21,6 +22,7 @@ export const initializeSignalR = (
     onQueryResponseReceived:OnQueryResponseReceived,
     connectionStatusUpdater:ConnectionStatusUpdater
 ) => {
+    console.log('Environment variables:', process.env);
     const apiUrl = process.env.VUE_APP_API_URL || '192.168.0.153';
     console.log(`Connection API URL: ${apiUrl}`);
     connection = new signalR.HubConnectionBuilder()
@@ -70,6 +72,13 @@ const queryForInitialStatuses = () => {
 
 
 
+export const sendKeyCommand = (command:consts.KeyControl) => {
+    console.log(`Sending ${command}`);
+    if (connection) {
+        connection.invoke('ReceiveKeyCommand', command)
+            .catch(err => console.error('SignalR send error: ', err));
+    }
+};
 export const sendSystemCommand = (command:consts.SystemControl) => {
     console.log(`Sending ${command}`);
     if (connection) {

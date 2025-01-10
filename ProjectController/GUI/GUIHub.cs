@@ -17,7 +17,15 @@ public class GUIHub : Hub
         // Log or handle the received message
         Console.WriteLine($"Received command: {command.ToString()}");
 
-        await tcpConnection.QueueCommand([command], SendCommandResponseToClients);
+        await tcpConnection.QueueCommand(new []{command}, SendCommandResponseToClients);
+    }
+    
+    public async Task ReceiveKeyCommand(KeyControl command)
+    {
+        // Log or handle the received message
+        Console.WriteLine($"Received command: {command.ToString()}");
+
+        await tcpConnection.QueueCommand(new []{command}, SendCommandResponseToClients);
     }
     
     public async Task ReceiveSystemQuery(SystemControl command)
@@ -25,9 +33,21 @@ public class GUIHub : Hub
         // Log or handle the received message
         Console.WriteLine($"Received query: {command.ToString()}");
 
-        await tcpConnection.QueueCommand([command], SendQueryResponseToClients);
+        await tcpConnection.QueueCommand(new []{command}, SendQueryResponseToClients);
     }
 
+    private async Task SendCommandResponseToClients(KeyControl commandType, string response)
+    {
+        if (response == SuccessfulCommandResponse)
+            response = "Success!";
+        
+        // Send the message to all connected clients
+        await Clients.All.SendAsync("ReceiveMessage", new
+        {
+            message = $"Key Command: {commandType} was successfully executed. Response: {response}"
+        });
+    }
+    
     private async Task SendCommandResponseToClients(SystemControl commandType, string response)
     {
         if (response == SuccessfulCommandResponse)
@@ -36,7 +56,7 @@ public class GUIHub : Hub
         // Send the message to all connected clients
         await Clients.All.SendAsync("ReceiveMessage", new
         {
-            message = $"{commandType} was successfully executed. Response: {response}"
+            message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
         });
     }
 
@@ -44,7 +64,7 @@ public class GUIHub : Hub
     {
         response = response.Replace("=", " ").TrimEnd(':', '\r');
         SystemControl? currentStatus = null;
-        foreach (var kvp in SystemControlDictionary)
+        foreach (var kvp in SystemControlCommands)
         {
             if (kvp.Value != response) continue;
             currentStatus = kvp.Key;
