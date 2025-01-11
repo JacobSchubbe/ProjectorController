@@ -187,11 +187,7 @@ public sealed class TcpConnection : IDisposable
         // string rawResponse = ReceiveData();
         
         Console.WriteLine($"Received response: {rawResponse}");
-        var status = StringToPowerStatus(rawResponse);
-        if (status == null) 
-            return rawResponse;
-        Console.WriteLine($"Received response: {status.ToString()}");
-        return status.ToString();
+        return rawResponse;
     }
     
     public void Dispose()

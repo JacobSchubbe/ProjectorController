@@ -51,27 +51,38 @@ public class GUIHub : Hub
         });
     }
 
-    private async Task SendQueryResponseToClients(ProjectorCommands queryType, string response)
+    private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
     {
-        response = response.Replace("=", " ").TrimEnd(':', '\r');
-        ProjectorCommands? currentStatus = null;
-        foreach (var kvp in ProjectorCommandsDictionary)
+        var status = StringToPowerStatus(rawResponse);
+        if (status == null)
         {
-            if (kvp.Value != response) continue;
-            currentStatus = kvp.Key;
-            break;
-        }
+            rawResponse = rawResponse.Replace("=", " ").TrimEnd(':', '\r');
+            ProjectorCommands? currentStatus = null;
+            foreach (var kvp in ProjectorCommandsDictionary.Where(kvp => kvp.Value == rawResponse))
+            {
+                currentStatus = kvp.Key;
+                break;
+            }
 
-        if (currentStatus == null)
-        {       
-            Console.WriteLine($"No status matching current status: {response}");
-            return;
-        }
+            if (!currentStatus.HasValue && queryType != ProjectorCommands.SystemControlPowerQuery)
+            {       
+                Console.WriteLine($"No status matching current status: {rawResponse}");
+                return;
+            }
 
-        Console.WriteLine($"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
-        await Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
+            Console.WriteLine($"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
+            await Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
+            {
+                queryType, currentStatus = currentStatus
+            });
+        }
+        else
         {
-            queryType, currentStatus
-        });
+            Console.WriteLine($"Sending current status {status.ToString()} for query {queryType.ToString()}");
+            await Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
+            {
+                queryType, currentStatus = status
+            });
+        }
     }
 }

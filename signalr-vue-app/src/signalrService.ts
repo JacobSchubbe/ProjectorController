@@ -80,6 +80,7 @@ const restartSignalR = async (connectionStatusUpdater:ConnectionStatusUpdater) =
 const queryForInitialStatuses = () => {
     sendProjectorQuery(consts.ProjectorCommands.SystemControlSourceQuery);
     getIsConnectedToProjector();
+    sendProjectorQuery(consts.ProjectorCommands.SystemControlPowerQuery)
 }
 
 

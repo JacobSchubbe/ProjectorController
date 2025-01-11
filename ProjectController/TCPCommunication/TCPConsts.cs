@@ -144,23 +144,24 @@ public static class TCPConsts
         StandbyNetworkOn = 4,
         AbnormalityStandby = 5,
     }
-    public static byte[] PowerStatusToBytes(PowerStatus status) => Encoding.ASCII.GetBytes(PowerStatusToString(status));
-    private static string PowerStatusToString(PowerStatus status) => $"PWR=0{(int)status}\r:";
-
+    // public static byte[] PowerStatusToBytes(PowerStatus status) => Encoding.ASCII.GetBytes(PowerStatusToString(status));
+    // private static string PowerStatusToString(PowerStatus status) => $"PWR=0{(int)status}\r:";
     public static PowerStatus? StringToPowerStatus(string response)
     {
-        PowerStatus? powerStatus = null;
-        foreach (var status in Enum.GetValues<PowerStatus>())
+        if (string.IsNullOrWhiteSpace(response) || !response.StartsWith("PWR=0") || !response.EndsWith("\r:"))
         {
-            if (PowerStatusToString(status) != response) continue;
-            powerStatus = status;
-            break;
+            return null;
         }
-        return powerStatus;
+
+        var statusValue = response.Substring(5, 1);
+        if (int.TryParse(statusValue, out var intValue))
+        {
+            return (PowerStatus)intValue;
+        }
+
+        throw new ArgumentException("Unable to parse the power status value.", nameof(response));
     }
     
-    
-
     public static readonly byte[] ErrorResponse = Encoding.ASCII.GetBytes("Err\r:");
     public static readonly string SuccessfulCommandResponse = ":";
 }

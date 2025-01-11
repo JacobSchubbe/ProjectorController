@@ -58,3 +58,13 @@ export enum ProjectorCommands
     KeyControlMute,
     KeyControlLinkMenu
 }
+
+export enum PowerStatus
+{
+    StandbyNetworkOff = 0,
+    LampOn = 1,
+    Warmup = 2,
+    CoolDown = 3,
+    StandbyNetworkOn = 4,
+    AbnormalityStandby = 5,
+}

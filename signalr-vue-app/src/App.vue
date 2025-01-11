@@ -17,7 +17,10 @@
     <div class="projector-controls">
       <!-- Row 1: Up Button -->
       <div class="control-row">
-        <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.SystemControlPowerOff)">
+        <button class="control-button" @click="handleClickProjectorCommands(
+            state.ProjectorConnected ? 
+            tcpConsts.ProjectorCommands.SystemControlPowerOff : tcpConsts.ProjectorCommands.SystemControlPowerOn)"
+        >
           {{ powerButtonText }}
         </button>
         <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlUp)">
@@ -86,16 +89,26 @@ export default {
     onMounted(async () => {
       await signalr.initializeSignalR(
           (message: signalr.Message) => { state.messages.push(message); },
-          (isConnected: boolean | null) => { state.ProjectorConnected = isConnected; },
+          (isConnected: boolean | null) => { handleProjectConnectionStateChange(isConnected); },
           (response:signalr.QueryResponse) => { handleQueryResponse(response.queryType, response.currentStatus); },
           (connectionStatus:boolean) => { handleGUIConnectionStateChange(connectionStatus); }
       );
     });
     
+    const handleProjectConnectionStateChange = (isConnected: boolean | null) => {
+      console.log(`Projector Connected: ${isConnected}`);
+      state.ProjectorConnected = isConnected;
+    }
+    
     const handleQueryResponse = (queryType:Number, currentStatus:Number) => {
       switch (queryType) {
         case tcpConsts.ProjectorCommands.SystemControlSourceQuery:
           state.selectedInput = currentStatus as tcpConsts.ProjectorCommands;
+          break;
+        case tcpConsts.ProjectorCommands.SystemControlPowerQuery:
+          console.log(`Power status: ${currentStatus}`);
+          var powerStatus = currentStatus as tcpConsts.PowerStatus;
+          state.ProjectorConnected = powerStatus === tcpConsts.PowerStatus.LampOn;
           break;
         default:
           console.error("Invalid input selected");
@@ -109,12 +122,38 @@ export default {
         state.ProjectorConnected = null;
       }
     }
+
+    // const handleProjectorQueries = async (command: tcpConsts.ProjectorCommands) => {
+    //   signalr.sendProjectorQuery(command);
+    //   console.log(`Query sent: ${command}`);
+    // };
     
-    const handleClickProjectorCommands = (command: tcpConsts.ProjectorCommands) => {
+    const handleClickProjectorCommands = async (command: tcpConsts.ProjectorCommands) => {
       signalr.sendProjectorCommands(command);
       console.log(`Command sent: ${command}`);
+
+      switch (command) {
+        case tcpConsts.ProjectorCommands.SystemControlPowerOff:
+          while (state.ProjectorConnected) {
+            console.log("Waiting for power off...");
+            signalr.sendProjectorQuery(tcpConsts.ProjectorCommands.SystemControlPowerQuery)
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+          console.log("Power off complete");
+          break;
+        case tcpConsts.ProjectorCommands.SystemControlPowerOn:
+          while (!state.ProjectorConnected) {
+            console.log("Waiting for power on...");
+            signalr.sendProjectorQuery(tcpConsts.ProjectorCommands.SystemControlPowerQuery)
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+          console.log("Power on complete");
+          break;
+      }
     };
 
+    
+    
     const handleDropdownChange = () => {
       console.log(`Selected Input: ${state.selectedInput}`);
       signalr.sendProjectorCommands(state.selectedInput);
