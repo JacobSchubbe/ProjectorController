@@ -10,6 +10,17 @@ public class GUIHub : Hub
     public GUIHub(TcpConnection tcpConnection)
     {
         this.tcpConnection = tcpConnection;
+        this.tcpConnection.RegisterOnDisconnect(SendIsConnectedToProjector);
+    }
+    
+    private async Task SendIsConnectedToProjector(bool? isConnected)
+    {
+        await Clients.All.SendAsync("IsConnectedToProjector", isConnected);
+    }
+    
+    public async Task IsConnectedToProjectorQuery()
+    {
+        await SendIsConnectedToProjector(tcpConnection.IsConnected);
     }
     
     public async Task ReceiveProjectorCommand(ProjectorCommands command)

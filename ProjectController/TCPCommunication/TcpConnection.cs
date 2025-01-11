@@ -4,12 +4,14 @@ using static ProjectController.TCPCommunication.TCPConsts;
 
 namespace ProjectController.TCPCommunication;
 
-public class TcpConnection
+public sealed class TcpConnection : IDisposable
 {
     private readonly Socket? socket;
     private readonly Queue<(ProjectorCommands command, Func<ProjectorCommands, string, Task> callback)> ProjectCommandQueue = new();
     private readonly SemaphoreSlim queueAccessSemaphore = new(1, 1);
     private readonly SemaphoreSlim connectionSemaphore = new(1, 1);
+    private event Func<bool?, Task>? disconnectEvent;
+    private bool lastConnectionStatus;
     
     private readonly string host = "192.168.0.150";
     private readonly int port = 3629;
@@ -19,13 +21,55 @@ public class TcpConnection
     public TcpConnection()
     {
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        Task.Run(async () => await DetectConnectionChange(CancellationToken.None));
+        
         if (!socket.Connected)
         {
             _ = ConnectToServer(CancellationToken.None);
         }
         RunCommandQueue(CancellationToken.None);
     }
+    
+    public bool IsConnected => socket?.Connected ?? false;
 
+    public void RegisterOnDisconnect(Func<bool?, Task> callback)
+    {
+        disconnectEvent += callback;
+    }
+    
+    public void UnregisterOnDisconnect(Func<bool?, Task> callback)
+    {
+        disconnectEvent -= callback;
+    }
+    
+    private async Task DetectConnectionChange(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                var isConnected = socket is { Connected: true };
+                if (isConnected != lastConnectionStatus)
+                {
+                    lastConnectionStatus = isConnected;
+                    if (disconnectEvent != null)
+                    {
+                        await disconnectEvent.Invoke(isConnected);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("Canceled connection change detection.");
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in DetectConnectionChange: {ex.Message}");
+            }
+            await Task.Delay(100, cancellationToken);
+        }
+    }
     private async Task ConnectToServer(CancellationToken cancellationToken)
     {
         await connectionSemaphore.WaitAsync(cancellationToken);
@@ -150,34 +194,8 @@ public class TcpConnection
         return status.ToString();
     }
     
-    // string ReceiveData()
-    // {
-    //     StringBuilder receivedData = new StringBuilder();
-    //     int bytesRead;
-    //     bool keepReceiving = true;
-    //
-    //     while (keepReceiving)
-    //     {
-    //         // Receive data from the socket
-    //         bytesRead = socket.Receive(buffer);
-    //
-    //         // If bytes are received
-    //         if (bytesRead <= 0) continue;
-    //         
-    //         for (var i = 0; i < bytesRead; i++)
-    //         {
-    //             Console.WriteLine($"Byte: {buffer[i]}");
-    //             if (buffer[i] == ETX) // 0x0A is the byte for newline '\n'
-    //             {
-    //                 keepReceiving = false;  // Stop receiving once the byte is encountered
-    //                 break;
-    //             }
-    //
-    //             // Append received byte to the received data
-    //             receivedData.Append((char)buffer[i]);
-    //         }
-    //     }
-    //
-    //     return receivedData.ToString();
-    // }
+    public void Dispose()
+    {
+        socket?.Dispose();
+    }
 }

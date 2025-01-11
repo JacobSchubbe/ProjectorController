@@ -4,33 +4,49 @@
 
     <!-- Dropdown Menu -->
     <div >
-      <label for="inputDropdown">Select Input:</label>
+      <label>Select Input:</label>
       <select id="inputDropdown" v-model="state.selectedInput" @change="handleDropdownChange">
-        <option :value=tcpConsts.ProjectorCommands.SourceHDMI1>Input1</option>
-        <option :value=tcpConsts.ProjectorCommands.SourceHDMI2>Input2</option>
-        <option :value=tcpConsts.ProjectorCommands.SourceHDMI3>Input3</option>
-        <option :value=tcpConsts.ProjectorCommands.SourceLAN>LAN</option>
+        <option :value=tcpConsts.ProjectorCommands.SystemControlSourceHDMI1>Input1</option>
+        <option :value=tcpConsts.ProjectorCommands.SystemControlSourceHDMI2>Input2</option>
+        <option :value=tcpConsts.ProjectorCommands.SystemControlSourceHDMI3>Input3</option>
+        <option :value=tcpConsts.ProjectorCommands.SystemControlSourceLAN>LAN</option>
       </select>
-      <label>
-        Connected: {{state.connected}}
-      </label>
     </div>
+    <label>GUI Connected: {{ state.GUIConnected }}</label>    
 
-    <div>
-      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.SystemControlPowerOff)">Power Off</button>
-      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.SystemControlPowerOn)">Power On</button>
-      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.SystemControlPowerQuery)">Query Power State</button>
-    </div>
-    <div class="">
-      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlUp)">Up</button>
-    </div>
-    <div>
-      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlLeft)">Left</button>
-      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlEnter)">Enter</button>
-      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlRight)">Right</button>
-    </div>
-    <div>
-      <button @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlDown)">Down</button>
+    <div class="projector-controls">
+      <!-- Row 1: Up Button -->
+      <div class="control-row">
+        <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.SystemControlPowerOff)">
+          {{ powerButtonText }}
+        </button>
+        <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlUp)">
+          Up
+        </button>
+        <button class="control-button">
+          -
+        </button>
+      </div>
+
+      <!-- Row 2: Left, Enter, and Right Buttons -->
+      <div class="control-row">
+        <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlLeft)">
+          Left
+        </button>
+        <button class="control-button enter-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlEnter)">
+          Enter
+        </button>
+        <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlRight)">
+          Right
+        </button>
+      </div>
+
+      <!-- Row 3: Down Button -->
+      <div class="control-row">
+        <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlDown)">
+          Down
+        </button>
+      </div>
     </div>
     
     
@@ -43,7 +59,7 @@
 </template>
 
 <script lang="ts">
-import { reactive, onMounted } from "vue";
+import { reactive, onMounted, computed } from "vue";
 import * as signalr from "./signalrService";
 import * as tcpConsts from "./TcpConsts";
 
@@ -53,17 +69,29 @@ export default {
     const state = reactive({
       messages: [] as signalr.Message[],
       selectedInput: -1,
-      connected: false,
-    });
-    
-    onMounted(() => {
-      signalr.initializeSignalR(
-          (message: signalr.Message) => { state.messages.push(message); },
-          (response:signalr.QueryResponse) => { handleQueryResponse(response.queryType, response.currentStatus); },
-          (connectionStatus:boolean) => { state.connected = connectionStatus; }
-      );
+      GUIConnected: false,
+      ProjectorConnected: null as boolean | null,
     });
 
+    const powerButtonText = computed(() => {
+      if (!state.GUIConnected) {
+        return "GUI Not Connected";
+      }
+      if (state.ProjectorConnected == null) {
+        return "Projector Not Connected";
+      }
+      return state.ProjectorConnected ? "Turn Power Off" : "Turn Power On";
+    });
+
+    onMounted(async () => {
+      await signalr.initializeSignalR(
+          (message: signalr.Message) => { state.messages.push(message); },
+          (isConnected: boolean | null) => { state.ProjectorConnected = isConnected; },
+          (response:signalr.QueryResponse) => { handleQueryResponse(response.queryType, response.currentStatus); },
+          (connectionStatus:boolean) => { handleGUIConnectionStateChange(connectionStatus); }
+      );
+    });
+    
     const handleQueryResponse = (queryType:Number, currentStatus:Number) => {
       switch (queryType) {
         case tcpConsts.ProjectorCommands.SystemControlSourceQuery:
@@ -72,6 +100,13 @@ export default {
         default:
           console.error("Invalid input selected");
           return;
+      }
+    }
+    
+    const handleGUIConnectionStateChange = (isConnected: boolean) => {
+      state.GUIConnected = isConnected;
+      if (!state.GUIConnected) {
+        state.ProjectorConnected = null;
       }
     }
     
@@ -84,35 +119,14 @@ export default {
       console.log(`Selected Input: ${state.selectedInput}`);
       signalr.sendProjectorCommands(state.selectedInput);
       console.log(`Command sent: ${state.selectedInput}`);
-
-      // // Determine the command to send based on selected input
-      // let command: tcpConsts.SystemControl;
-      // switch (state.selectedInput) {
-      //   case "HDMI1":
-      //     command = tcpConsts.SystemControl.SourceHDMI1;
-      //     break;
-      //   case "HDMI2":
-      //     command = tcpConsts.SystemControl.SourceHDMI2;
-      //     break;
-      //   case "HDMI3":
-      //     command = tcpConsts.SystemControl.SourceHDMI3;
-      //     break;
-      //   case "LAN":
-      //     command = tcpConsts.SystemControl.SourceHDMILAN;
-      //     break;
-      //   default:
-      //     console.error("Invalid input selected");
-      //     return;
-      // }
-
     };
 
-    return { state, handleDropdownChange, handleClickProjectorCommands, tcpConsts };
+    return { state, handleDropdownChange, handleClickProjectorCommands, tcpConsts, powerButtonText };
   }
 };
 </script>
 
-<style>
+<style scoped>
 button {
   margin: 10px;
   padding: 10px;
@@ -122,4 +136,52 @@ select {
   margin: 10px;
   padding: 5px;
 }
-</style>
+
+.projector-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px; /* Spacing between rows */
+}
+
+.control-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px; /* Spacing between buttons */
+}
+
+.control-button {
+  background-color: #007bff; /* Primary button color */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  width: 80px; /* Fixed width */
+  height: 80px; /* Fixed height */
+  font-size: 14px; /* Reduce font size to prevent overflow if content is long */
+  cursor: pointer;
+  text-align: center;
+  vertical-align: middle;
+  display: flex; /* Flexbox for centering content */
+  justify-content: center; /* Horizontally center content */
+  align-items: center; /* Vertically center content */
+  transition: background-color 0.3s ease, transform 0.2s;
+  white-space: normal; /* Allow text to wrap inside the button */
+  overflow: hidden; /* Hide any overflowing content */
+  text-overflow: ellipsis; /* Add ellipsis if text overflows */
+}
+
+.control-button:hover {
+  background-color: #0056b3; /* Darker shade on hover */
+}
+
+.control-button:active {
+  transform: scale(0.95); /* Button press effect */
+}
+
+.enter-button {
+  background-color: #28a745; /* Distinct color for the Enter button */
+}
+
+.enter-button:hover {
+  background-color: #1e7e34; /* Darker shade on hover for Enter button */
+}</style>
