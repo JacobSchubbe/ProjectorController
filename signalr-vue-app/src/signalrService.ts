@@ -14,12 +14,11 @@ export type QueryResponse = {
 }
 
 type OnMessageReceived = (message: Message) => void;
-type IsConnectedToProjector = (isConnected:boolean | null) => void;
+type IsConnectedToProjector = (isConnected:boolean) => void;
 type OnQueryResponseReceived = (response:QueryResponse) => void;
 type ConnectionStatusUpdater = (isConnected: boolean) => void;
 
 export const initializeSignalR = async (
-    onMessageReceived:OnMessageReceived, 
     isConnectedToProject:IsConnectedToProjector, 
     onQueryResponseReceived:OnQueryResponseReceived,
     connectionStatusUpdater:ConnectionStatusUpdater
@@ -31,14 +30,9 @@ export const initializeSignalR = async (
         .withUrl(`http://${apiUrl}:19521/GUIHub`)
         .build();
 
-    connection.on('IsConnectedToProjector', (isConnected:boolean | null) => {
+    connection.on('IsConnectedToProjector', (isConnected:boolean) => {
         if (isConnectedToProject) {
             isConnectedToProject(isConnected);
-        }
-    });
-    connection.on('ReceiveMessage', (message:Message) => {
-        if (onMessageReceived) {
-            onMessageReceived(message);
         }
     });
     connection.on('ReceiveProjectorQueryResponse', (response:QueryResponse) => {
@@ -64,7 +58,7 @@ const restartSignalR = async (connectionStatusUpdater:ConnectionStatusUpdater) =
             await connection.start();
             console.log('SignalR connected');
             connectionStatusUpdater(true);
-            queryForInitialStatuses();
+            queryForInitialBackendStatuses();
         }
         catch (err) {
             if (err instanceof Error) {
@@ -77,12 +71,14 @@ const restartSignalR = async (connectionStatusUpdater:ConnectionStatusUpdater) =
     }
 }
 
-const queryForInitialStatuses = () => {
-    sendProjectorQuery(consts.ProjectorCommands.SystemControlSourceQuery);
+const queryForInitialBackendStatuses = () => {
     getIsConnectedToProjector();
     sendProjectorQuery(consts.ProjectorCommands.SystemControlPowerQuery)
 }
 
+export const queryForInitialProjectorStatuses = () => {
+    sendProjectorQuery(consts.ProjectorCommands.SystemControlSourceQuery);
+}
 
 export const getIsConnectedToProjector = () => {
     console.log(`Get connection status to projector`);

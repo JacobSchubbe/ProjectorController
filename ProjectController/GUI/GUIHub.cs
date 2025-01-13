@@ -1,41 +1,40 @@
-using System.Text;
 using Microsoft.AspNetCore.SignalR;
 using ProjectController.TCPCommunication;
 using static ProjectController.TCPCommunication.TCPConsts;
 
 public class GUIHub : Hub
 {
+    private readonly ILogger<GUIHub> logger;
     private readonly TcpConnection tcpConnection;
     
-    public GUIHub(TcpConnection tcpConnection)
+    public GUIHub(ILogger<GUIHub> logger, TcpConnection tcpConnection)
     {
+        this.logger = logger;
         this.tcpConnection = tcpConnection;
         this.tcpConnection.RegisterOnDisconnect(SendIsConnectedToProjector);
     }
     
-    private async Task SendIsConnectedToProjector(bool? isConnected)
+    private async Task SendIsConnectedToProjector(bool isConnected)
     {
+        logger.LogInformation($"Sending IsConnectedToProjector: {isConnected}");
         await Clients.All.SendAsync("IsConnectedToProjector", isConnected);
     }
     
     public async Task IsConnectedToProjectorQuery()
     {
+        logger.LogInformation("Received: IsConnectedToProjectorQuery");
         await SendIsConnectedToProjector(tcpConnection.IsConnected);
     }
     
     public async Task ReceiveProjectorCommand(ProjectorCommands command)
     {
-        // Log or handle the received message
-        Console.WriteLine($"Received command: {command.ToString()}");
-
+        logger.LogInformation($"Received command: {command.ToString()}");
         await tcpConnection.QueueCommand(new []{command}, SendCommandResponseToClients);
     }
     
     public async Task ReceiveProjectorQuery(ProjectorCommands command)
     {
-        // Log or handle the received message
-        Console.WriteLine($"Received query: {command.ToString()}");
-
+        logger.LogInformation($"Received query: {command.ToString()}");
         await tcpConnection.QueueCommand(new []{command}, SendQueryResponseToClients);
     }
     
@@ -44,7 +43,7 @@ public class GUIHub : Hub
         if (response == SuccessfulCommandResponse)
             response = $"Success! {response}";
         
-        // Send the message to all connected clients
+        logger.LogInformation($"Sending command response: {response}");
         await Clients.All.SendAsync("ReceiveMessage", new
         {
             message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
@@ -53,6 +52,7 @@ public class GUIHub : Hub
 
     private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
     {
+        logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
         var status = StringToPowerStatus(rawResponse);
         if (status == null)
         {
@@ -66,11 +66,11 @@ public class GUIHub : Hub
 
             if (!currentStatus.HasValue && queryType != ProjectorCommands.SystemControlPowerQuery)
             {       
-                Console.WriteLine($"No status matching current status: {rawResponse}");
+                logger.LogInformation($"No status matching current status: {rawResponse}");
                 return;
             }
 
-            Console.WriteLine($"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
+            logger.LogInformation($"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
             await Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
             {
                 queryType, currentStatus = currentStatus
@@ -78,7 +78,7 @@ public class GUIHub : Hub
         }
         else
         {
-            Console.WriteLine($"Sending current status {status.ToString()} for query {queryType.ToString()}");
+            logger.LogInformation($"Sending current status {status.ToString()} for query {queryType.ToString()}");
             await Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
             {
                 queryType, currentStatus = status

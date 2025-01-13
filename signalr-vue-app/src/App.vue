@@ -17,47 +17,40 @@
     <div class="projector-controls">
       <!-- Row 1: Up Button -->
       <div class="control-row">
-        <button class="control-button" @click="handleClickProjectorCommands(
-            state.ProjectorConnected ? 
+        <button :disabled="buttonDisabledPowerButton" class="control-button" @click="handleClickProjectorCommands(
+            state.ProjectorPoweredOn ? 
             tcpConsts.ProjectorCommands.SystemControlPowerOff : tcpConsts.ProjectorCommands.SystemControlPowerOn)"
         >
           {{ powerButtonText }}
         </button>
-        <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlUp)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlUp)">
           Up
         </button>
-        <button class="control-button">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button">
           -
         </button>
       </div>
 
       <!-- Row 2: Left, Enter, and Right Buttons -->
       <div class="control-row">
-        <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlLeft)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlLeft)">
           Left
         </button>
-        <button class="control-button enter-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlEnter)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button enter-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlEnter)">
           Enter
         </button>
-        <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlRight)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlRight)">
           Right
         </button>
       </div>
 
       <!-- Row 3: Down Button -->
       <div class="control-row">
-        <button class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlDown)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlDown)">
           Down
         </button>
       </div>
     </div>
-    
-    
-    <ul>
-      <li v-for="(msg, index) in state.messages" :key="index">
-        {{ msg.message || 'No message content' }}
-      </li>
-    </ul>
   </div>
 </template>
 
@@ -70,34 +63,49 @@ export default {
   name: 'App',
   setup() {
     const state = reactive({
-      messages: [] as signalr.Message[],
       selectedInput: -1,
       GUIConnected: false,
-      ProjectorConnected: null as boolean | null,
+      ProjectorConnected: false,
+      ProjectorPoweredOn: false,
     });
-
+    
+    const buttonDisabledWhenPowerOff = computed(() => {
+      return !state.GUIConnected || !state.ProjectorConnected || !state.ProjectorPoweredOn
+    })
+    
+    const buttonDisabledPowerButton = computed(() => {
+      return !state.GUIConnected || !state.ProjectorConnected
+    })
+    
     const powerButtonText = computed(() => {
       if (!state.GUIConnected) {
         return "GUI Not Connected";
       }
-      if (state.ProjectorConnected == null) {
+      if (!state.ProjectorConnected) {
         return "Projector Not Connected";
       }
-      return state.ProjectorConnected ? "Turn Power Off" : "Turn Power On";
+      return state.ProjectorPoweredOn ? "Turn Power Off" : "Turn Power On";
     });
 
     onMounted(async () => {
       await signalr.initializeSignalR(
-          (message: signalr.Message) => { state.messages.push(message); },
-          (isConnected: boolean | null) => { handleProjectConnectionStateChange(isConnected); },
+          (isConnected: boolean) => { handleProjectConnectionStateChange(isConnected); },
           (response:signalr.QueryResponse) => { handleQueryResponse(response.queryType, response.currentStatus); },
           (connectionStatus:boolean) => { handleGUIConnectionStateChange(connectionStatus); }
       );
     });
     
-    const handleProjectConnectionStateChange = (isConnected: boolean | null) => {
+    const handleProjectConnectionStateChange = (isConnected: boolean) => {
       console.log(`Projector Connected: ${isConnected}`);
       state.ProjectorConnected = isConnected;
+      if (state.ProjectorConnected) {
+        signalr.queryForInitialProjectorStatuses();
+      }
+      else
+      {
+        state.selectedInput = -1;
+        state.ProjectorPoweredOn = false;
+      }
     }
     
     const handleQueryResponse = (queryType:Number, currentStatus:Number) => {
@@ -106,9 +114,10 @@ export default {
           state.selectedInput = currentStatus as tcpConsts.ProjectorCommands;
           break;
         case tcpConsts.ProjectorCommands.SystemControlPowerQuery:
-          console.log(`Power status: ${currentStatus}`);
           var powerStatus = currentStatus as tcpConsts.PowerStatus;
-          state.ProjectorConnected = powerStatus === tcpConsts.PowerStatus.LampOn;
+          var isPoweredOn = powerStatus === tcpConsts.PowerStatus.Warmup || powerStatus == tcpConsts.PowerStatus.LampOn;
+          state.ProjectorPoweredOn = isPoweredOn;
+          console.log("Projector Powered on: " + isPoweredOn);
           break;
         default:
           console.error("Invalid input selected");
@@ -119,14 +128,11 @@ export default {
     const handleGUIConnectionStateChange = (isConnected: boolean) => {
       state.GUIConnected = isConnected;
       if (!state.GUIConnected) {
-        state.ProjectorConnected = null;
+        state.selectedInput = -1;
+        state.ProjectorPoweredOn = false;
+        state.ProjectorConnected = false;
       }
     }
-
-    // const handleProjectorQueries = async (command: tcpConsts.ProjectorCommands) => {
-    //   signalr.sendProjectorQuery(command);
-    //   console.log(`Query sent: ${command}`);
-    // };
     
     const handleClickProjectorCommands = async (command: tcpConsts.ProjectorCommands) => {
       signalr.sendProjectorCommands(command);
@@ -151,8 +157,6 @@ export default {
           break;
       }
     };
-
-    
     
     const handleDropdownChange = () => {
       console.log(`Selected Input: ${state.selectedInput}`);
@@ -160,7 +164,7 @@ export default {
       console.log(`Command sent: ${state.selectedInput}`);
     };
 
-    return { state, handleDropdownChange, handleClickProjectorCommands, tcpConsts, powerButtonText };
+    return { state, handleDropdownChange, handleClickProjectorCommands, buttonDisabledPowerButton, buttonDisabledWhenPowerOff, tcpConsts, powerButtonText };
   }
 };
 </script>
@@ -207,6 +211,13 @@ select {
   white-space: normal; /* Allow text to wrap inside the button */
   overflow: hidden; /* Hide any overflowing content */
   text-overflow: ellipsis; /* Add ellipsis if text overflows */
+}
+
+.control-button:disabled {
+  background-color: #ccc; /* Grey background */
+  color: #666;           /* Greyed-out text */
+  cursor: not-allowed;   /* Change cursor to indicate it's not clickable */
+  opacity: 0.6;          /* Dim the button */
 }
 
 .control-button:hover {

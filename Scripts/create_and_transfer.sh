@@ -5,7 +5,7 @@ IMAGE_NAME="projectorcontroller"                     # Replace with your Docker 
 TAR_FILE="projectorcontroller.tar"                        # Name of the exported TAR file
 TARGET_HOST="jacob.schubbe@raspberrypi.local"                     # Replace with your target host (e.g., pi)
 REMOTE_DIR="/home/jacob.schubbe/projectorcontroller"                # Replace with the target directory on the remote host
-DOCKER_COMPOSE_PATH="docker-compose.yaml"   # Replace with your Docker Compose file path
+DOCKER_COMPOSE_PATH="../docker-compose.yaml"   # Replace with your Docker Compose file path
 DOCKER_REMOTE_COMPOSE_DIR="$REMOTE_DIR/"     # Remote location for the docker-compose.yml file
 
 echo "Docker compose build"
