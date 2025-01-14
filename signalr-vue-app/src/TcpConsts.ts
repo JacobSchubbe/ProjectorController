@@ -56,7 +56,14 @@ export enum ProjectorCommands
     KeyControlBackward,
     KeyControlForward,
     KeyControlMute,
-    KeyControlLinkMenu
+    KeyControlLinkMenu,
+    IRHome,
+    IRESC,
+    IREnter,
+    IRPointerUp,
+    IRPointerDown,
+    IRPointerLeft,
+    IRPointerRight,
 }
 
 export enum PowerStatus

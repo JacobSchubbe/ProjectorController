@@ -11,6 +11,8 @@ public sealed class TcpConnection : IDisposable
     private readonly Queue<(ProjectorCommands command, Func<ProjectorCommands, string, Task> callback)> ProjectCommandQueue = new();
     private readonly SemaphoreSlim queueAccessSemaphore = new(1, 1);
     private readonly SemaphoreSlim connectionSemaphore = new(1, 1);
+    private Task commandQueueTask;
+    
     private event Func<bool, Task>? disconnectEvent;
     private bool lastConnectionStatus;
     
@@ -26,7 +28,7 @@ public sealed class TcpConnection : IDisposable
         Task.Run(async () => await DetectConnectionChange(CancellationToken.None));
 
         _ = CheckConnection(CancellationToken.None);
-        RunCommandQueue(CancellationToken.None);
+        commandQueueTask = RunCommandQueue(CancellationToken.None);
     }
     
     public bool IsConnected => socket?.Connected ?? false;
@@ -94,19 +96,25 @@ public sealed class TcpConnection : IDisposable
         socket?.Receive(buffer);
     }
 
-    private async void RunCommandQueue(CancellationToken token)
+    private async Task RunCommandQueue(CancellationToken token)
     {
         try
         {
             while (!token.IsCancellationRequested)
             {
+                if (ProjectCommandQueue.Count == 0)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(500), token);
+                    continue;
+                }
+                
                 try
                 {
                     logger.LogDebug("Try to access queue...");
                     await queueAccessSemaphore.WaitAsync(token);
                     logger.LogDebug("Accessed queue...");
                     (ProjectorCommands command, Func<ProjectorCommands, string, Task> callback) commandKvp;
-                    var dequeued = false;
+                    bool dequeued;
                     
                     try
                     {

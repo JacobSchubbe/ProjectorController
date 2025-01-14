@@ -71,7 +71,7 @@ const restartSignalR = async (connectionStatusUpdater:ConnectionStatusUpdater) =
     }
 }
 
-const queryForInitialBackendStatuses = () => {
+export const queryForInitialBackendStatuses = () => {
     getIsConnectedToProjector();
     sendProjectorQuery(consts.ProjectorCommands.SystemControlPowerQuery)
 }

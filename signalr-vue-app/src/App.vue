@@ -26,8 +26,8 @@
         <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlUp)">
           Up
         </button>
-        <button :disabled="buttonDisabledWhenPowerOff" class="control-button">
-          -
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlHome)">
+          Home
         </button>
       </div>
 
@@ -89,13 +89,13 @@ export default {
 
     onMounted(async () => {
       await signalr.initializeSignalR(
-          (isConnected: boolean) => { handleProjectConnectionStateChange(isConnected); },
+          (isConnected: boolean) => { handleProjectorConnectionStateChange(isConnected); },
           (response:signalr.QueryResponse) => { handleQueryResponse(response.queryType, response.currentStatus); },
           (connectionStatus:boolean) => { handleGUIConnectionStateChange(connectionStatus); }
       );
     });
     
-    const handleProjectConnectionStateChange = (isConnected: boolean) => {
+    const handleProjectorConnectionStateChange = async (isConnected: boolean) => {
       console.log(`Projector Connected: ${isConnected}`);
       state.ProjectorConnected = isConnected;
       if (state.ProjectorConnected) {
@@ -105,6 +105,8 @@ export default {
       {
         state.selectedInput = -1;
         state.ProjectorPoweredOn = false;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        signalr.queryForInitialBackendStatuses();
       }
     }
     
@@ -168,6 +170,8 @@ export default {
   }
 };
 </script>
+
+
 
 <style scoped>
 button {

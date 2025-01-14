@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text;
 
 namespace ProjectController.TCPCommunication;
@@ -63,7 +62,14 @@ public static class TCPConsts
         KeyControlBackward,
         KeyControlForward,
         KeyControlMute,
-        KeyControlLinkMenu
+        KeyControlLinkMenu,
+        IRHome,
+        IRESC,
+        IREnter,
+        IRPointerUp,
+        IRPointerDown,
+        IRPointerLeft,
+        IRPointerRight,
     }
 
     public static readonly Dictionary<ProjectorCommands, string> ProjectorCommandsDictionary = new()
@@ -127,7 +133,16 @@ public static class TCPConsts
         { ProjectorCommands.KeyControlBackward, "KEY D6" },
         { ProjectorCommands.KeyControlForward, "KEY D7" },
         { ProjectorCommands.KeyControlMute, "KEY D8" },
-        { ProjectorCommands.KeyControlLinkMenu, "KEY D9" }
+        { ProjectorCommands.KeyControlLinkMenu, "KEY D9" },
+        
+        // --- same for IR
+        { ProjectorCommands.IRHome, "KEY 30" },
+        { ProjectorCommands.IRESC, "KEY 3D" },
+        { ProjectorCommands.IREnter, "KEY 49" },
+        { ProjectorCommands.IRPointerUp, "KEY 58" },
+        { ProjectorCommands.IRPointerDown, "KEY 59" },
+        { ProjectorCommands.IRPointerLeft, "KEY 5A" },
+        { ProjectorCommands.IRPointerRight, "KEY 5B" },
     };
     
     private enum KeyCommands : byte

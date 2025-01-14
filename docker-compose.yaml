@@ -14,5 +14,7 @@ services:
     ports:
       - "8081:80"
       - "19521:19521"
+      - "5037:5037"
+      - "5555:5555"
     volumes:
       - /home/logs:/app/logs

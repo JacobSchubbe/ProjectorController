@@ -1,4 +1,5 @@
 ﻿using ProjectController;
+using ProjectController.ADB;
 using ProjectController.TCPCommunication;
 using Serilog;
 
@@ -7,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Register the singleton
 builder.Services.AddSingleton<TcpConnection>();
 builder.Services.AddSingleton<GUIHub>();
+builder.Services.AddSingleton<AndroidTVController>();
 
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
 if (allowedOrigins == null)
