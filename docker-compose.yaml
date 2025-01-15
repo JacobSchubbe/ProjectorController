@@ -11,8 +11,10 @@ services:
         - VUE_APP_PORT=8081
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - CustomConfig__IPAddress=localhost
-      - CustomConfig__DebugVersion=false
     ports:
       - "8081:80"
       - "19521:19521"
+      - "5037:5037"
+      - "5555:5555"
+    volumes:
+      - /home/logs:/app/logs

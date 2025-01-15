@@ -4,46 +4,74 @@ using static ProjectController.TCPCommunication.TCPConsts;
 
 namespace ProjectController.TCPCommunication;
 
-public class TcpConnection
+public sealed class TcpConnection : IDisposable
 {
-    private readonly Socket? socket;
-    private readonly Queue<(SystemControl command, Func<SystemControl, string, Task> callback)> systemCommandQueue = new();
-    private readonly Queue<(KeyControl command, Func<KeyControl, string, Task> callback)> keyCommandQueue = new();
+    private readonly ILogger<TcpConnection> logger;
+    private readonly Socket socket;
+    private readonly Queue<(ProjectorCommands command, Func<ProjectorCommands, string, Task> callback)> ProjectCommandQueue = new();
     private readonly SemaphoreSlim queueAccessSemaphore = new(1, 1);
     private readonly SemaphoreSlim connectionSemaphore = new(1, 1);
+    private Task commandQueueTask;
+    
+    private event Func<bool, Task>? disconnectEvent;
+    private bool lastConnectionStatus;
     
     private readonly string host = "192.168.0.150";
     private readonly int port = 3629;
     private readonly byte[] buffer = new byte[1024];
     private readonly byte ETX = Encoding.ASCII.GetBytes(":")[0];
     
-    public TcpConnection()
+    public TcpConnection(ILogger<TcpConnection> logger)
     {
+        this.logger = logger;
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        if (!socket.Connected)
-        {
-            _ = ConnectToServer(CancellationToken.None);
-        }
-        RunCommandQueue(CancellationToken.None);
-    }
+        Task.Run(async () => await DetectConnectionChange(CancellationToken.None));
 
-    private async Task ConnectToServer(CancellationToken cancellationToken)
+        _ = CheckConnection(CancellationToken.None);
+        commandQueueTask = RunCommandQueue(CancellationToken.None);
+    }
+    
+    public bool IsConnected => socket?.Connected ?? false;
+
+    public void RegisterOnDisconnect(Func<bool, Task> callback)
     {
-        await connectionSemaphore.WaitAsync(cancellationToken);
-        try
+        disconnectEvent += callback;
+    }
+    
+    public void UnregisterOnDisconnect(Func<bool, Task> callback)
+    {
+        disconnectEvent -= callback;
+    }
+    
+    private async Task DetectConnectionChange(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"Connecting to {host}:{port}...");
-            await socket.ConnectAsync(host, port, cancellationToken);
-            // ClearBuffer();
-            SendCommand(SystemControl.StartCommunication);
-            Console.WriteLine($"Connected to {host}:{port}.");
-        }
-        finally
-        {
-            connectionSemaphore.Release();
+            try
+            {
+                var isConnected = socket is { Connected: true };
+                if (isConnected != lastConnectionStatus)
+                {
+                    lastConnectionStatus = isConnected;
+                    if (disconnectEvent != null)
+                    {
+                        await disconnectEvent.Invoke(isConnected);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogDebug("Canceled connection change detection.");
+                return;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"Error in DetectConnectionChange: {ex.Message}");
+            }
+            await Task.Delay(100, cancellationToken);
         }
     }
-
+    
     private async Task CheckConnection(CancellationToken cancellationToken)
     {
         await connectionSemaphore.WaitAsync(cancellationToken);
@@ -51,7 +79,11 @@ public class TcpConnection
         {
             if (socket.Connected)
                 return;
-            await ConnectToServer(cancellationToken);
+            
+            logger.LogInformation($"Connecting to {host}:{port}...");
+            await socket.ConnectAsync(host, port, cancellationToken);
+            SendCommand(ProjectorCommands.SystemControlStartCommunication);
+            logger.LogInformation($"Connected to {host}:{port}."); 
         }
         finally
         {
@@ -64,70 +96,71 @@ public class TcpConnection
         socket?.Receive(buffer);
     }
 
-    private async void RunCommandQueue(CancellationToken token)
+    private async Task RunCommandQueue(CancellationToken token)
     {
-        var index = 0;
         try
         {
             while (!token.IsCancellationRequested)
             {
+                if (ProjectCommandQueue.Count == 0)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(500), token);
+                    continue;
+                }
+                
                 try
                 {
+                    logger.LogDebug("Try to access queue...");
                     await queueAccessSemaphore.WaitAsync(token);
+                    logger.LogDebug("Accessed queue...");
+                    (ProjectorCommands command, Func<ProjectorCommands, string, Task> callback) commandKvp;
+                    bool dequeued;
+                    
                     try
                     {
-                        if (index % 2 == 0)
-                        {
-                            if (systemCommandQueue.TryDequeue(out var commandKvp))
-                            {
-                                await CheckConnection(token);
-                                var response = SendCommand(commandKvp.command);
-                                await commandKvp.callback(commandKvp.command, response);
-                            }
-                        }
-                        else
-                        {
-                            if (keyCommandQueue.TryDequeue(out var commandKvp))
-                            {
-                                await CheckConnection(token);
-                                var response = SendCommand(commandKvp.command);
-                                await commandKvp.callback(commandKvp.command, response);
-                            }
-                        }
+                        logger.LogDebug("Checking for command to dequeue...");
+                        dequeued = ProjectCommandQueue.TryDequeue(out commandKvp);
                     }
                     finally
                     {
-                        index++;
+                        logger.LogDebug("Finished with queue...");
                         queueAccessSemaphore.Release();
+                    }
+
+                    if (dequeued)
+                    {
+                        await CheckConnection(token);
+                        var response = SendCommand(commandKvp.command);
+                        await commandKvp.callback(commandKvp.command, response);
                     }
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Exception while trying to send a command: {e.Message}");
+                    logger.LogError($"Exception while trying to send a command: {e.Message}");
                 }
             
-                await Task.Delay(TimeSpan.FromMilliseconds(25), token);
+                await Task.Delay(TimeSpan.FromMilliseconds(100), token);
             }
         }
         catch (OperationCanceledException)
         {
-            Console.WriteLine("Canceled all commands.");
+            logger.LogDebug("Canceled all commands.");
         }
         catch (Exception e)
         {
-            Console.WriteLine($"EXCEPTION: {e.Message}");
+            logger.LogError($"Generic Exception: {e.Message}");
         }
     }
     
-    public async Task QueueCommand(SystemControl[] commands, Func<SystemControl, string, Task> callback)
+    public async Task QueueCommand(ProjectorCommands[] commands, Func<ProjectorCommands, string, Task> callback)
     {
         foreach (var command in commands)
         {
             await queueAccessSemaphore.WaitAsync();
             try
             {
-                systemCommandQueue.Enqueue((command, callback));
-                Console.WriteLine($"Command enqueued: {command}");
+                ProjectCommandQueue.Enqueue((command, callback));
+                logger.LogInformation($"Command enqueued: {command}");
             }
             finally
             {
@@ -136,101 +169,24 @@ public class TcpConnection
         }
     }
     
-    public async Task QueueCommand(KeyControl[] commands, Func<KeyControl, string, Task> callback)
+    string SendCommand(ProjectorCommands command)
     {
-        foreach (var command in commands)
-        {
-            await queueAccessSemaphore.WaitAsync();
-            try
-            {
-                keyCommandQueue.Enqueue((command, callback));
-                Console.WriteLine($"Command enqueued: {command}");
-            }
-            finally
-            {
-                queueAccessSemaphore.Release();
-            }
-        }
-    }
-    
-    string SendCommand(SystemControl command)
-    {
-        string commandStr;
-        if (command != SystemControl.StartCommunication)
-        {
-            commandStr = $"{SystemControlCommands[command]}\r";
-        }
-        else
-        {
-            commandStr = $"{SystemControlCommands[command]}";
-        }
+        var commandStr = command != ProjectorCommands.SystemControlStartCommunication ? 
+            $"{ProjectorCommandsDictionary[command]}\r" : $"{ProjectorCommandsDictionary[command]}";
 
-        byte[] commandBytes = Encoding.ASCII.GetBytes(commandStr);
+        var commandBytes = Encoding.ASCII.GetBytes(commandStr);
         socket.Send(commandBytes);
 
-        Console.WriteLine($"Sent command: {commandStr}");
+        logger.LogInformation($"Sent command: {commandStr}");
 
-        int bytesRead = socket.Receive(buffer);
-        string rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-        // string rawResponse = ReceiveData();
-        
-        Console.WriteLine($"Received response: {rawResponse}");
-        var status = StringToPowerStatus(rawResponse);
-        if (status == null) 
-            return rawResponse;
-        Console.WriteLine($"Received response: {status.ToString()}");
-        return status.ToString();
+        var bytesRead = socket.Receive(buffer);
+        var rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+        logger.LogInformation($"Received response: {rawResponse}");
+        return rawResponse;
     }
     
-    string SendCommand(KeyControl command)
+    public void Dispose()
     {
-        var commandStr = $"{KeyControlCommands[command]}";
-
-        byte[] commandBytes = Encoding.ASCII.GetBytes(commandStr);
-        socket.Send(commandBytes);
-
-        Console.WriteLine($"Sent command: {commandStr}");
-
-        int bytesRead = socket.Receive(buffer);
-        string rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-        // string rawResponse = ReceiveData();
-        
-        Console.WriteLine($"Received response: {rawResponse}");
-        var status = StringToPowerStatus(rawResponse);
-        if (status == null) 
-            return rawResponse;
-        Console.WriteLine($"Received response: {status.ToString()}");
-        return status.ToString();
-    }
-
-    string ReceiveData()
-    {
-        StringBuilder receivedData = new StringBuilder();
-        int bytesRead;
-        bool keepReceiving = true;
-
-        while (keepReceiving)
-        {
-            // Receive data from the socket
-            bytesRead = socket.Receive(buffer);
-
-            // If bytes are received
-            if (bytesRead <= 0) continue;
-            
-            for (var i = 0; i < bytesRead; i++)
-            {
-                Console.WriteLine($"Byte: {buffer[i]}");
-                if (buffer[i] == ETX) // 0x0A is the byte for newline '\n'
-                {
-                    keepReceiving = false;  // Stop receiving once the byte is encountered
-                    break;
-                }
-
-                // Append received byte to the received data
-                receivedData.Append((char)buffer[i]);
-            }
-        }
-
-        return receivedData.ToString();
+        socket?.Dispose();
     }
 }

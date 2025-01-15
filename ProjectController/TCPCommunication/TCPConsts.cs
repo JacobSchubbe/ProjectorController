@@ -1,157 +1,148 @@
-using System.Collections.Generic;
 using System.Text;
 
 namespace ProjectController.TCPCommunication;
 
 public static class TCPConsts
 {
-    public enum SystemControl
+    public enum ProjectorCommands
     {
-        StartCommunication,
-        PowerQuery,
-        PowerOff,
-        PowerOn,
-        VolumeMuteOn,
-        VolumeMuteOff,
-        VolumeMuteQuery,
-        VolumeUp,
-        VolumeDown,
-        VolumeQuery,
-        SourceHDMI1,
-        SourceHDMI2,
-        SourceHDMI3,
-        SourceHDMILAN,
-        SourceQuery,
-        SourceListQuery,
-    }
-    
-    public enum SystemInformation
-    {
-        ProjectorNameQuery,
-        SerialNumberQuery,
-        ErrorQuery,
-        LampHoursQuery,
-        OperationalTimeQuery,
-        SignalStatusQuery
-    }
-
-    public enum ImageControl
-    {
-        NaturalColorMode,
-        ImageReverseHorizontalOn,
-        ImageReverseHorizontalOff,
-        ImageReverseHorizontalQuery,
-        ImageReverseVerticalOn,
-        ImageReverseVerticalOff,
-        ImageReverseVerticalQuery,
-        BrightnessUp,
-        BrightnessDown,
-        BrightnessQuery,
-        StatusLEDIlluminationOn,
-        StatusLEDIlluminationOff,
-        StatusLEDIlluminationQuery
-    }
-
-    public enum KeyControl
-    {
-        KeyPower,
-        KeyMenu,
-        KeyUp,
-        KeyDown,
-        KeyLeft,
-        KeyRight,
-        KeyEnter,
-        KeyHome,
-        KeyVolumeUp,
-        KeyVolumeDown,
-        KeyAVMuteBlank,
-        KeyKeysTone,
-        KeyHDMILink,
-        KeyPlay,
-        KeyStop,
-        KeyPause,
-        KeyRewind,
-        KeyFastForward,
-        KeyBackward,
-        KeyForward,
-        KeyMute,
-        KeyLinkMenu
+        SystemControlStartCommunication,
+        SystemControlPowerQuery,
+        SystemControlPowerOff,
+        SystemControlPowerOn,
+        SystemControlVolumeMuteOn,
+        SystemControlVolumeMuteOff,
+        SystemControlVolumeMuteQuery,
+        SystemControlVolumeUp,
+        SystemControlVolumeDown,
+        SystemControlVolumeQuery,
+        SystemControlSourceHDMI1,
+        SystemControlSourceHDMI2,
+        SystemControlSourceHDMI3,
+        SystemControlSourceHDMILAN,
+        SystemControlSourceQuery,
+        SystemControlSourceListQuery,
+        SystemInformationProjectorNameQuery,
+        SystemInformationSerialNumberQuery,
+        SystemInformationErrorQuery,
+        SystemInformationLampHoursQuery,
+        SystemInformationOperationalTimeQuery,
+        SystemInformationSignalStatusQuery,
+        ImageControlNaturalColorMode,
+        ImageControlImageReverseHorizontalOn,
+        ImageControlImageReverseHorizontalOff,
+        ImageControlImageReverseHorizontalQuery,
+        ImageControlImageReverseVerticalOn,
+        ImageControlImageReverseVerticalOff,
+        ImageControlImageReverseVerticalQuery,
+        ImageControlBrightnessUp,
+        ImageControlBrightnessDown,
+        ImageControlBrightnessQuery,
+        ImageControlStatusLEDIlluminationOn,
+        ImageControlStatusLEDIlluminationOff,
+        ImageControlStatusLEDIlluminationQuery,
+        KeyControlPower,
+        KeyControlMenu,
+        KeyControlUp,
+        KeyControlDown,
+        KeyControlLeft,
+        KeyControlRight,
+        KeyControlEnter,
+        KeyControlHome,
+        KeyControlVolumeUp,
+        KeyControlVolumeDown,
+        KeyControlAVMuteBlank,
+        KeyControlKeysTone,
+        KeyControlHDMILink,
+        KeyControlPlay,
+        KeyControlStop,
+        KeyControlPause,
+        KeyControlRewind,
+        KeyControlFastForward,
+        KeyControlBackward,
+        KeyControlForward,
+        KeyControlMute,
+        KeyControlLinkMenu,
+        IRHome,
+        IRESC,
+        IREnter,
+        IRPointerUp,
+        IRPointerDown,
+        IRPointerLeft,
+        IRPointerRight,
     }
 
-    public static readonly Dictionary<SystemControl, string> SystemControlCommands = new()
+    public static readonly Dictionary<ProjectorCommands, string> ProjectorCommandsDictionary = new()
     {
-        { SystemControl.StartCommunication, "ESC/VP.net\x10\x03\x00\x00\x00\x00" },
-        { SystemControl.PowerQuery, "PWR?" },
-        { SystemControl.PowerOff, "PWR OFF" },
-        { SystemControl.PowerOn, "PWR ON" },
-        { SystemControl.VolumeMuteOn, "MUTE ON" },
-        { SystemControl.VolumeMuteOff, "MUTE OFF" },
-        { SystemControl.VolumeMuteQuery, "MUTE?" },
-        { SystemControl.VolumeUp, "VOL INC" },
-        { SystemControl.VolumeDown, "VOL DEC" },
-        { SystemControl.VolumeQuery, "VOL?" },
-        { SystemControl.SourceHDMI1, "SOURCE 30" },
-        { SystemControl.SourceHDMI2, "SOURCE A0" },
-        { SystemControl.SourceHDMI3, "SOURCE C0" },
-        { SystemControl.SourceHDMILAN, "SOURCE 53" },
-        { SystemControl.SourceQuery, "SOURCE?" },
-        { SystemControl.SourceListQuery, "SOURCELISTA?" },
-    };
-    
-    public static readonly Dictionary<SystemInformation, string> SystemInfoCommands = new Dictionary<SystemInformation, string>
-    {
-        { SystemInformation.ProjectorNameQuery, "NWPNAME?" },
-        { SystemInformation.SerialNumberQuery, "SNO?" },
-        { SystemInformation.ErrorQuery, "ERR?" },
-        { SystemInformation.LampHoursQuery, "LAMP?" },
-        { SystemInformation.OperationalTimeQuery, "ONTIME?" },
-        { SystemInformation.SignalStatusQuery, "SIGNAL?" }
-    };
-
-    public static readonly Dictionary<ImageControl, string> ImageControlCommands = new Dictionary<ImageControl, string>
-    {
-        { ImageControl.NaturalColorMode, "CMODE 07" },
-        { ImageControl.ImageReverseHorizontalOn, "HREVERSE ON" },
-        { ImageControl.ImageReverseHorizontalOff, "HREVERSE OFF" },
-        { ImageControl.ImageReverseHorizontalQuery, "HREVERSE?" },
-        { ImageControl.ImageReverseVerticalOn, "VREVERSE ON" },
-        { ImageControl.ImageReverseVerticalOff, "VREVERSE OFF" },
-        { ImageControl.ImageReverseVerticalQuery, "VREVERSE?" },
+        { ProjectorCommands.SystemControlStartCommunication, "ESC/VP.net\x10\x03\x00\x00\x00\x00" },
+        { ProjectorCommands.SystemControlPowerQuery, "PWR?" },
+        { ProjectorCommands.SystemControlPowerOff, "PWR OFF" },
+        { ProjectorCommands.SystemControlPowerOn, "PWR ON" },
+        { ProjectorCommands.SystemControlVolumeMuteOn, "MUTE ON" },
+        { ProjectorCommands.SystemControlVolumeMuteOff, "MUTE OFF" },
+        { ProjectorCommands.SystemControlVolumeMuteQuery, "MUTE?" },
+        { ProjectorCommands.SystemControlVolumeUp, "VOL INC" },
+        { ProjectorCommands.SystemControlVolumeDown, "VOL DEC" },
+        { ProjectorCommands.SystemControlVolumeQuery, "VOL?" },
+        { ProjectorCommands.SystemControlSourceHDMI1, "SOURCE 30" },
+        { ProjectorCommands.SystemControlSourceHDMI2, "SOURCE A0" },
+        { ProjectorCommands.SystemControlSourceHDMI3, "SOURCE C0" },
+        { ProjectorCommands.SystemControlSourceHDMILAN, "SOURCE 53" },
+        { ProjectorCommands.SystemControlSourceQuery, "SOURCE?" },
+        { ProjectorCommands.SystemControlSourceListQuery, "SOURCELISTA?" },
+        { ProjectorCommands.SystemInformationProjectorNameQuery, "NWPNAME?" },
+        { ProjectorCommands.SystemInformationSerialNumberQuery, "SNO?" },
+        { ProjectorCommands.SystemInformationErrorQuery, "ERR?" },
+        { ProjectorCommands.SystemInformationLampHoursQuery, "LAMP?" },
+        { ProjectorCommands.SystemInformationOperationalTimeQuery, "ONTIME?" },
+        { ProjectorCommands.SystemInformationSignalStatusQuery, "SIGNAL?" },
+        { ProjectorCommands.ImageControlNaturalColorMode, "CMODE 07" },
+        { ProjectorCommands.ImageControlImageReverseHorizontalOn, "HREVERSE ON" },
+        { ProjectorCommands.ImageControlImageReverseHorizontalOff, "HREVERSE OFF" },
+        { ProjectorCommands.ImageControlImageReverseHorizontalQuery, "HREVERSE?" },
+        { ProjectorCommands.ImageControlImageReverseVerticalOn, "VREVERSE ON" },
+        { ProjectorCommands.ImageControlImageReverseVerticalOff, "VREVERSE OFF" },
+        { ProjectorCommands.ImageControlImageReverseVerticalQuery, "VREVERSE?" },
         
         // --- same for CONTRAST, DENSITY, TINT
-        { ImageControl.BrightnessUp, "BRIGHT INC" },
-        { ImageControl.BrightnessDown, "BRIGHT DEC" },
-        { ImageControl.BrightnessQuery, "BRIGHT?" },
+        { ProjectorCommands.ImageControlBrightnessUp, "BRIGHT INC" },
+        { ProjectorCommands.ImageControlBrightnessDown, "BRIGHT DEC" },
+        { ProjectorCommands.ImageControlBrightnessQuery, "BRIGHT?" },
         
-        { ImageControl.StatusLEDIlluminationOn, "ILLUM 01" },
-        { ImageControl.StatusLEDIlluminationOff, "ILLUM 00" },
-        { ImageControl.StatusLEDIlluminationQuery, "ILLUM?" }
-    };
-
-    public static readonly Dictionary<KeyControl, string> KeyControlCommands = new Dictionary<KeyControl, string>
-    {
-        { KeyControl.KeyPower, "KEY 01" },
-        { KeyControl.KeyMenu, "KEY 03" },
-        { KeyControl.KeyUp, "KEY 35" },
-        { KeyControl.KeyDown, "KEY 36" },
-        { KeyControl.KeyLeft, "KEY 37" },
-        { KeyControl.KeyRight, "KEY 38" },
-        { KeyControl.KeyEnter, "KEY 16" },
-        { KeyControl.KeyHome, "KEY 04" },
-        { KeyControl.KeyVolumeUp, "KEY 56" },
-        { KeyControl.KeyVolumeDown, "KEY 57" },
-        { KeyControl.KeyAVMuteBlank, "KEY 3E" },
-        { KeyControl.KeyKeysTone, "KEY C8" },
-        { KeyControl.KeyHDMILink, "KEY 8E" },
-        { KeyControl.KeyPlay, "KEY D1" },
-        { KeyControl.KeyStop, "KEY D2" },
-        { KeyControl.KeyPause, "KEY D3" },
-        { KeyControl.KeyRewind, "KEY D4" },
-        { KeyControl.KeyFastForward, "KEY D5" },
-        { KeyControl.KeyBackward, "KEY D6" },
-        { KeyControl.KeyForward, "KEY D7" },
-        { KeyControl.KeyMute, "KEY D8" },
-        { KeyControl.KeyLinkMenu, "KEY D9" }
+        { ProjectorCommands.ImageControlStatusLEDIlluminationOn, "ILLUM 01" },
+        { ProjectorCommands.ImageControlStatusLEDIlluminationOff, "ILLUM 00" },
+        { ProjectorCommands.ImageControlStatusLEDIlluminationQuery, "ILLUM?" },
+        { ProjectorCommands.KeyControlPower, "KEY 01" },
+        { ProjectorCommands.KeyControlMenu, "KEY 03" },
+        { ProjectorCommands.KeyControlUp, "KEY 35" },
+        { ProjectorCommands.KeyControlDown, "KEY 36" },
+        { ProjectorCommands.KeyControlLeft, "KEY 37" },
+        { ProjectorCommands.KeyControlRight, "KEY 38" },
+        { ProjectorCommands.KeyControlEnter, "KEY 16" },
+        { ProjectorCommands.KeyControlHome, "KEY 04" },
+        { ProjectorCommands.KeyControlVolumeUp, "KEY 56" },
+        { ProjectorCommands.KeyControlVolumeDown, "KEY 57" },
+        { ProjectorCommands.KeyControlAVMuteBlank, "KEY 3E" },
+        { ProjectorCommands.KeyControlKeysTone, "KEY C8" },
+        { ProjectorCommands.KeyControlHDMILink, "KEY 8E" },
+        { ProjectorCommands.KeyControlPlay, "KEY D1" },
+        { ProjectorCommands.KeyControlStop, "KEY D2" },
+        { ProjectorCommands.KeyControlPause, "KEY D3" },
+        { ProjectorCommands.KeyControlRewind, "KEY D4" },
+        { ProjectorCommands.KeyControlFastForward, "KEY D5" },
+        { ProjectorCommands.KeyControlBackward, "KEY D6" },
+        { ProjectorCommands.KeyControlForward, "KEY D7" },
+        { ProjectorCommands.KeyControlMute, "KEY D8" },
+        { ProjectorCommands.KeyControlLinkMenu, "KEY D9" },
+        
+        // --- same for IR
+        { ProjectorCommands.IRHome, "KEY 30" },
+        { ProjectorCommands.IRESC, "KEY 3D" },
+        { ProjectorCommands.IREnter, "KEY 49" },
+        { ProjectorCommands.IRPointerUp, "KEY 58" },
+        { ProjectorCommands.IRPointerDown, "KEY 59" },
+        { ProjectorCommands.IRPointerLeft, "KEY 5A" },
+        { ProjectorCommands.IRPointerRight, "KEY 5B" },
     };
     
     private enum KeyCommands : byte
@@ -168,23 +159,24 @@ public static class TCPConsts
         StandbyNetworkOn = 4,
         AbnormalityStandby = 5,
     }
-    public static byte[] PowerStatusToBytes(PowerStatus status) => Encoding.ASCII.GetBytes(PowerStatusToString(status));
-    private static string PowerStatusToString(PowerStatus status) => $"PWR=0{(int)status}\r:";
-
+    // public static byte[] PowerStatusToBytes(PowerStatus status) => Encoding.ASCII.GetBytes(PowerStatusToString(status));
+    // private static string PowerStatusToString(PowerStatus status) => $"PWR=0{(int)status}\r:";
     public static PowerStatus? StringToPowerStatus(string response)
     {
-        PowerStatus? powerStatus = null;
-        foreach (var status in Enum.GetValues<PowerStatus>())
+        if (string.IsNullOrWhiteSpace(response) || !response.StartsWith("PWR=0") || !response.EndsWith("\r:"))
         {
-            if (PowerStatusToString(status) != response) continue;
-            powerStatus = status;
-            break;
+            return null;
         }
-        return powerStatus;
+
+        var statusValue = response.Substring(5, 1);
+        if (int.TryParse(statusValue, out var intValue))
+        {
+            return (PowerStatus)intValue;
+        }
+
+        throw new ArgumentException("Unable to parse the power status value.", nameof(response));
     }
     
-    
-
     public static readonly byte[] ErrorResponse = Encoding.ASCII.GetBytes("Err\r:");
     public static readonly string SuccessfulCommandResponse = ":";
 }

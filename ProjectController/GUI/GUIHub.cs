@@ -1,86 +1,88 @@
-using System.Text;
 using Microsoft.AspNetCore.SignalR;
 using ProjectController.TCPCommunication;
 using static ProjectController.TCPCommunication.TCPConsts;
 
 public class GUIHub : Hub
 {
+    private readonly ILogger<GUIHub> logger;
     private readonly TcpConnection tcpConnection;
     
-    public GUIHub(TcpConnection tcpConnection)
+    public GUIHub(ILogger<GUIHub> logger, TcpConnection tcpConnection)
     {
+        this.logger = logger;
         this.tcpConnection = tcpConnection;
+        this.tcpConnection.RegisterOnDisconnect(SendIsConnectedToProjector);
     }
     
-    public async Task ReceiveSystemCommand(SystemControl command)
+    private async Task SendIsConnectedToProjector(bool isConnected)
     {
-        // Log or handle the received message
-        Console.WriteLine($"Received command: {command.ToString()}");
-
+        logger.LogInformation($"Sending IsConnectedToProjector: {isConnected}");
+        await Clients.All.SendAsync("IsConnectedToProjector", isConnected);
+    }
+    
+    public async Task IsConnectedToProjectorQuery()
+    {
+        logger.LogInformation("Received: IsConnectedToProjectorQuery");
+        await SendIsConnectedToProjector(tcpConnection.IsConnected);
+    }
+    
+    public async Task ReceiveProjectorCommand(ProjectorCommands command)
+    {
+        logger.LogInformation($"Received command: {command.ToString()}");
         await tcpConnection.QueueCommand(new []{command}, SendCommandResponseToClients);
     }
     
-    public async Task ReceiveKeyCommand(KeyControl command)
+    public async Task ReceiveProjectorQuery(ProjectorCommands command)
     {
-        // Log or handle the received message
-        Console.WriteLine($"Received command: {command.ToString()}");
-
-        await tcpConnection.QueueCommand(new []{command}, SendCommandResponseToClients);
-    }
-    
-    public async Task ReceiveSystemQuery(SystemControl command)
-    {
-        // Log or handle the received message
-        Console.WriteLine($"Received query: {command.ToString()}");
-
+        logger.LogInformation($"Received query: {command.ToString()}");
         await tcpConnection.QueueCommand(new []{command}, SendQueryResponseToClients);
     }
-
-    private async Task SendCommandResponseToClients(KeyControl commandType, string response)
-    {
-        if (response == SuccessfulCommandResponse)
-            response = "Success!";
-        
-        // Send the message to all connected clients
-        await Clients.All.SendAsync("ReceiveMessage", new
-        {
-            message = $"Key Command: {commandType} was successfully executed. Response: {response}"
-        });
-    }
     
-    private async Task SendCommandResponseToClients(SystemControl commandType, string response)
+    private async Task SendCommandResponseToClients(ProjectorCommands commandType, string response)
     {
         if (response == SuccessfulCommandResponse)
-            response = "Success!";
+            response = $"Success! {response}";
         
-        // Send the message to all connected clients
+        logger.LogInformation($"Sending command response: {response}");
         await Clients.All.SendAsync("ReceiveMessage", new
         {
             message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
         });
     }
 
-    private async Task SendQueryResponseToClients(SystemControl queryType, string response)
+    private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
     {
-        response = response.Replace("=", " ").TrimEnd(':', '\r');
-        SystemControl? currentStatus = null;
-        foreach (var kvp in SystemControlCommands)
+        logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
+        var status = StringToPowerStatus(rawResponse);
+        if (status == null)
         {
-            if (kvp.Value != response) continue;
-            currentStatus = kvp.Key;
-            break;
-        }
+            rawResponse = rawResponse.Replace("=", " ").TrimEnd(':', '\r');
+            ProjectorCommands? currentStatus = null;
+            foreach (var kvp in ProjectorCommandsDictionary.Where(kvp => kvp.Value == rawResponse))
+            {
+                currentStatus = kvp.Key;
+                break;
+            }
 
-        if (currentStatus == null)
-        {       
-            Console.WriteLine($"No status matching current status: {response}");
-            return;
-        }
+            if (!currentStatus.HasValue && queryType != ProjectorCommands.SystemControlPowerQuery)
+            {       
+                logger.LogInformation($"No status matching current status: {rawResponse}");
+                return;
+            }
 
-        Console.WriteLine($"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
-        await Clients.All.SendAsync("ReceiveQueryResponse", new
+            logger.LogInformation($"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
+            await Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
+            {
+                queryType, currentStatus = currentStatus
+            });
+        }
+        else
         {
-            queryType, currentStatus
-        });
+            logger.LogInformation($"Sending current status {status.ToString()} for query {queryType.ToString()}");
+            await Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
+            {
+                queryType, currentStatus = status
+            });
+        }
     }
 }

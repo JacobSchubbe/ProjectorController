@@ -21,14 +21,17 @@ COPY ./signalr-vue-app ./
 RUN npm run build
 
 FROM --platform=$TARGETPLATFORM mcr.microsoft.com/dotnet/aspnet:6.0-alpine AS final
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    android-tools-adb && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/publish /app/
 RUN apk add --no-cache nginx icu-libs
 COPY nginx/nginx.conf /etc/nginx/http.d/default.conf
 COPY --from=frontend-builder /signalr-vue-app/dist /usr/share/nginx/html
 
-EXPOSE 80
-EXPOSE 19521
+EXPOSE 80 19521 5037 5555
 
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

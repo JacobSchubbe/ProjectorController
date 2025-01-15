@@ -1,6 +1,6 @@
 import * as signalR from '@microsoft/signalr';
 import * as consts from './TcpConsts';
-import {KeyControl} from "./TcpConsts";
+import { HubConnectionState } from '@microsoft/signalr';
 
 let connection:signalR.HubConnection;
 
@@ -14,11 +14,12 @@ export type QueryResponse = {
 }
 
 type OnMessageReceived = (message: Message) => void;
+type IsConnectedToProjector = (isConnected:boolean) => void;
 type OnQueryResponseReceived = (response:QueryResponse) => void;
 type ConnectionStatusUpdater = (isConnected: boolean) => void;
 
-export const initializeSignalR = (
-    onMessageReceived:OnMessageReceived, 
+export const initializeSignalR = async (
+    isConnectedToProject:IsConnectedToProjector, 
     onQueryResponseReceived:OnQueryResponseReceived,
     connectionStatusUpdater:ConnectionStatusUpdater
 ) => {
@@ -27,69 +28,76 @@ export const initializeSignalR = (
     console.log(`Connection API URL: ${apiUrl}`);
     connection = new signalR.HubConnectionBuilder()
         .withUrl(`http://${apiUrl}:19521/GUIHub`)
-        .withAutomaticReconnect()
         .build();
-    
-    connection.on('ReceiveMessage', (message:Message) => {
-        if (onMessageReceived) {
-            onMessageReceived(message);
+
+    connection.on('IsConnectedToProjector', (isConnected:boolean) => {
+        if (isConnectedToProject) {
+            isConnectedToProject(isConnected);
         }
     });
-    
-    connection.on('ReceiveQueryResponse', (response:QueryResponse) => {
+    connection.on('ReceiveProjectorQueryResponse', (response:QueryResponse) => {
         console.log(`QueryType: ${response.queryType}, Current Status: ${response.currentStatus}`);
         if (onQueryResponseReceived) {
             onQueryResponseReceived(response);
         }
     });
 
-    reconnectToSignalR(connectionStatusUpdater);
+    connection.onclose(async () => {
+        console.log('SignalR connection closed');
+        connectionStatusUpdater(false);
+        restartSignalR(connectionStatusUpdater);
+    });
+
+    restartSignalR(connectionStatusUpdater);
 };
 
-const reconnectToSignalR = async (connectionStatusUpdater:any) => {
-    connection.start()
-        .then(() => {
+const restartSignalR = async (connectionStatusUpdater:ConnectionStatusUpdater) => {
+    while (connection.state !== HubConnectionState.Connected) {
+        try {
+            console.log("Attempting to connect to SignalR...");
+            await connection.start();
             console.log('SignalR connected');
             connectionStatusUpdater(true);
-            queryForInitialStatuses()
-        })
-        .catch(err => console.error('SignalR connection error: ', err));
+            queryForInitialBackendStatuses();
+        }
+        catch (err) {
+            if (err instanceof Error) {
+                console.error(`SignalR connection error. Retrying connection again in 2 seconds. Error: ${err.message}`);
+            } else {
+                console.error(`SignalR connection error. Retrying connection again in 2 seconds. Unknown error: ${JSON.stringify(err)}`);
+            }
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+    }
 }
 
-
-
-
-
-
-const queryForInitialStatuses = () => {
-    console.log("Sending source query")
-    sendSystemQuery(consts.SystemControl.SourceQuery);
-    console.log("Sent source query")
+export const queryForInitialBackendStatuses = () => {
+    getIsConnectedToProjector();
+    sendProjectorQuery(consts.ProjectorCommands.SystemControlPowerQuery)
 }
 
+export const queryForInitialProjectorStatuses = () => {
+    sendProjectorQuery(consts.ProjectorCommands.SystemControlSourceQuery);
+}
 
-
-
-
-
-export const sendKeyCommand = (command:consts.KeyControl) => {
-    console.log(`Sending ${command}`);
+export const getIsConnectedToProjector = () => {
+    console.log(`Get connection status to projector`);
     if (connection) {
-        connection.invoke('ReceiveKeyCommand', command)
+        connection.invoke('IsConnectedToProjectorQuery')
             .catch(err => console.error('SignalR send error: ', err));
     }
 };
-export const sendSystemCommand = (command:consts.SystemControl) => {
+export const sendProjectorCommands = (command:consts.ProjectorCommands) => {
     console.log(`Sending ${command}`);
     if (connection) {
-        connection.invoke('ReceiveSystemCommand', command)
+        connection.invoke('ReceiveProjectorCommand', command)
             .catch(err => console.error('SignalR send error: ', err));
     }
 };
-export const sendSystemQuery = (command:consts.SystemControl) => {
+export const sendProjectorQuery = (command:consts.ProjectorCommands) => {
     console.log(`Sending ${command}`);
     if (connection) {
-        connection.invoke('ReceiveSystemQuery', command)
+        connection.invoke('ReceiveProjectorQuery', command)
             .catch(err => console.error('SignalR send error: ', err));
     }
 };
