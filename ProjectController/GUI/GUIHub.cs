@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.SignalR;
-using ProjectController.ADB;
 using ProjectController.TCPCommunication;
 using static ProjectController.TCPCommunication.TCPConsts;
 
@@ -8,7 +7,7 @@ public class GUIHub : Hub
     private readonly ILogger<GUIHub> logger;
     private readonly TcpConnection tcpConnection;
     
-    public GUIHub(ILogger<GUIHub> logger, TcpConnection tcpConnection, AndroidTVController androidTVController)
+    public GUIHub(ILogger<GUIHub> logger, TcpConnection tcpConnection)
     {
         this.logger = logger;
         this.tcpConnection = tcpConnection;

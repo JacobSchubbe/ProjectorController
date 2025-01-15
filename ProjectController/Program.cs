@@ -8,7 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Register the singleton
 builder.Services.AddSingleton<TcpConnection>();
 builder.Services.AddSingleton<GUIHub>();
-builder.Services.AddSingleton<AndroidTVController>();
+var androidTvController = new AndroidTVController();
+builder.Services.AddSingleton(androidTvController);
 
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
 if (allowedOrigins == null)

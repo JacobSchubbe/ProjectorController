@@ -6,25 +6,89 @@ using ProjectController.ADB;
 
 public class ADBClient
 {
+    private readonly Action<string> logger;
     private readonly bool _verbose;
     private readonly bool _showCommand;
     private readonly List<string> _devices;
     private string? _selectedDevice;
     private Process? _serverProcess;
 
-    public ADBClient(bool verbose = false, bool showCommand = false)
+    public ADBClient(Action<string> logger, bool verbose = false, bool showCommand = false)
     {
+        this.logger = logger ?? (message => { });
         _verbose = verbose;
         _showCommand = showCommand;
         _devices = new List<string>();
         Log("ADB client initialized.");
         
-        StartServer();
+        // StartServer();
     }
 
-    private string ExecuteCommand(string command, bool blocking = true, bool includeSelectedSerial = true)
+    private class CommandSubprocess
     {
-        var adbCommand = "adb ";
+        private Process? process;
+        private bool blocking;
+        
+        public CommandSubprocess(Process? process, bool blocking)
+        {
+            this.blocking = blocking;
+            this.process = process;
+        }
+
+        public static implicit operator Process?(CommandSubprocess? command)
+        {
+            if (command is { blocking: false })
+            {
+                // For non-blocking calls, start reading asynchronous output
+                command.process?.BeginOutputReadLine();
+                command.process?.BeginErrorReadLine();
+                return command.process; // Return the running Process object
+            }
+
+            if (command is { blocking: true })
+            {
+                // Wait for the process to complete and capture the output
+                var result = command.process?.StandardOutput.ReadToEnd();
+                command.process?.WaitForExit();
+                return null;
+            }
+
+            return null;
+        }
+        
+        public static implicit operator string(CommandSubprocess? command)
+        {
+            if (command is { blocking: false })
+            {
+                // For non-blocking calls, start reading asynchronous output
+                command.process?.BeginOutputReadLine();
+                command.process?.BeginErrorReadLine();
+                return string.Empty; // Return the running Process object
+            }
+
+            if (command is { blocking: true })
+            {
+                // Wait for the process to complete and capture the output
+                var result = command.process?.StandardOutput.ReadToEnd();
+                command.process?.WaitForExit();
+                return result?.Trim() ?? string.Empty;
+            }
+            
+            return string.Empty;
+        }
+        
+    }
+    
+    private CommandSubprocess ExecuteCommand(string command, bool blocking = true, bool includeSelectedSerial = true)
+    {
+        var adbBasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ADB", "Resources", "adb.exe"); // Path to local adb.exe
+
+        if (!File.Exists(adbBasePath))
+        {
+            throw new FileNotFoundException("ADB executable not found at path: " + adbBasePath);
+        }
+        
+        var adbCommand = "";
         if (!string.IsNullOrEmpty(_selectedDevice) && includeSelectedSerial)
         {
             adbCommand += $"-s {_selectedDevice} ";
@@ -36,27 +100,22 @@ public class ADBClient
             Log($"Executing command: {adbCommand}");
         }
 
-        var processInfo = new ProcessStartInfo
-        {
-            FileName = "cmd.exe",
-            Arguments = $"/C {adbCommand}",
-            RedirectStandardOutput = true,
-            RedirectStandardError = blocking,
-            UseShellExecute = false,
-            CreateNoWindow = true
+        var process = new Process { StartInfo = new ProcessStartInfo
+            {
+                FileName = adbBasePath,
+                Arguments = adbCommand,
+                RedirectStandardOutput = true,
+                RedirectStandardError = blocking,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            },
+            EnableRaisingEvents = true // Allow monitoring the process (like events)
         };
-
-        using var process = new Process { StartInfo = processInfo };
+        process.OutputDataReceived += (sender, args) => Log(args.Data ?? "No output data received");
+        process.ErrorDataReceived += (sender, args) => Log(args.Data ?? "No error data received");
+        
         process.Start();
-
-        if (blocking)
-        {
-            var result = process.StandardOutput.ReadToEnd();
-            process.WaitForExit();
-            return result.Trim();
-        }
-
-        return string.Empty;
+        return new CommandSubprocess(process, blocking);
     }
 
     private void Log(string message)
@@ -70,8 +129,8 @@ public class ADBClient
     public bool StartServer()
     {
         Log("Starting ADB server...");
-        ExecuteCommand("start-server", blocking: false, includeSelectedSerial: false);
-        Thread.Sleep(5000); // Give time for the server to start.
+        _serverProcess = ExecuteCommand("start-server", blocking: true, includeSelectedSerial: false);
+        // Thread.Sleep(5000); // Give time for the server to start.
 
         if (_serverProcess != null)
         {
@@ -113,7 +172,8 @@ public class ADBClient
     public bool Connect(string ip)
     {
         Log($"Connecting to {ip}...");
-        var result = ExecuteCommand($"connect {ip}", includeSelectedSerial: false);
+        ExecuteCommand($"disconnect {ip}", includeSelectedSerial: false);
+        string result = ExecuteCommand($"connect {ip}", includeSelectedSerial: false);
         if (result.Contains("connected"))
         {
             GetDevices();
@@ -146,7 +206,7 @@ public class ADBClient
     {
         Log("Disconnecting device...");
         var result = ExecuteCommand("disconnect");
-        if (result.Contains("disconnected"))
+        if (((string)result).Contains("disconnected"))
         {
             GetDevices();
             _selectedDevice = null;
@@ -166,7 +226,7 @@ public class ADBClient
         _devices.Clear();
         var result = ExecuteCommand("devices -l", includeSelectedSerial: false);
 
-        string[] lines = result.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        string[] lines = ((string)result).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
         if (lines.Length > 1) // Skip the `List of devices` header.
         {
             for (var i = 1; i < lines.Length; i++)
@@ -207,7 +267,7 @@ public class ADBClient
 
         Log("Getting device info...");
         var deviceInfo = new Dictionary<string, string>();
-        var results = ExecuteCommand("shell getprop").Split(Environment.NewLine);
+        var results = ((string)ExecuteCommand("shell getprop")).Split(Environment.NewLine);
 
         foreach (var data in results)
         {
@@ -248,7 +308,7 @@ public class ADBClient
         Log($"Installing APK: {apkPath}...");
         var result = ExecuteCommand(command);
 
-        if (result.Contains("Success"))
+        if (((string)result).Contains("Success"))
         {
             Log("APK installed successfully.");
             return true;
@@ -272,7 +332,7 @@ public class ADBClient
         Log($"Uninstalling package: {packageName}...");
         var result = ExecuteCommand(command);
 
-        if (result.Contains("Success"))
+        if (((string)result).Contains("Success"))
         {
             Log("Package uninstalled successfully.");
             return true;
@@ -294,7 +354,7 @@ public class ADBClient
         Log($"Starting app: {packageName}...");
 
         var result = ExecuteCommand($"shell {command}");
-        if (result.Contains("Error"))
+        if (((string)result).Contains("Error"))
         {
             Log("Failed to start the app.");
             return false;
@@ -310,7 +370,7 @@ public class ADBClient
 
         Log($"Stopping app: {packageName}...");
         var result = ExecuteCommand($"shell am force-stop {packageName}");
-        return result.Contains("Done");
+        return ((string)result).Contains("Done");
     }
 
     public bool Reboot(string? mode = null)
@@ -326,7 +386,7 @@ public class ADBClient
         Log($"Rebooting device{(mode != null ? " into " + mode : string.Empty)}...");
         var result = ExecuteCommand(command);
 
-        return !result.Contains("error");
+        return !((string)result).Contains("error");
     }
     
     public bool? IsPoweredOn()

@@ -2,39 +2,46 @@ namespace ProjectController.ADB;
 
 public class AndroidTVController
 {
+    // private readonly ILogger<AndroidTVController> logger;
     private readonly ADBClient _adbClient;
-    private readonly string _ip = "192.168.0.236";
+    private readonly string _ip = "192.168.0.236:5555";
     private readonly bool verbose = false;
     private readonly bool showCommand = false;
 
     public AndroidTVController()
     {
-        _adbClient = new ADBClient(verbose, showCommand);
-        _ = Testing();
+        // this.logger = logger;
+        _adbClient = new ADBClient(Log, verbose, showCommand);
+        Testing().ConfigureAwait(true).GetAwaiter();
+    }
+
+    private void Log(string message)
+    {
+        Console.WriteLine(message);
     }
 
     private async Task Testing()
     {
         Connect();
-        // await Task.Delay(10000);
-        // PressHome();
-        // await Task.Delay(10000);
-        // PressDpadRight();
-        // await Task.Delay(10000);
-        // PressDpadDown();
+        await Task.Delay(5000);
+        PressHome();
+        await Task.Delay(5000);
+        PressDpadRight();
+        await Task.Delay(5000);
+        PressDpadDown();
     }
     
     public bool Connect()
     {
-        Console.WriteLine($"Connecting to {_ip}...");
+        Log($"Connecting to {_ip}...");
         var result = _adbClient.Connect(_ip);
         if (result)
         {
-            Console.WriteLine("Connected successfully.");
+            Log("Connected successfully.");
         }
         else
         {
-            Console.WriteLine("Connection failed.");
+            Log("Connection failed.");
         }
         return result;
     }
@@ -42,7 +49,7 @@ public class AndroidTVController
     public bool IsConnected()
     {
         var status = _adbClient.IsConnected(_ip);
-        Console.WriteLine($"Connection status: {status}");
+        Log($"Connection status: {status}");
         return status;
     }
 
