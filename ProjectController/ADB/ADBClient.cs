@@ -418,7 +418,7 @@ public class ADBClient
         return ExecuteCommand($"shell {command}");
     }
     
-    public void SendKeyEventInput(KeyCodes keycode, bool longPress = false)
+    public Task SendKeyEventInput(KeyCodes keycode, bool longPress = false)
     {
         if (_selectedDevice == null)
         {
@@ -433,6 +433,7 @@ public class ADBClient
         }
 
         ExecuteShellCommand(command);
+        return Task.CompletedTask;
     }
     
     public void SendTextInput(string text, bool encodeSpaces = true)

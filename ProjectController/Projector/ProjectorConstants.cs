@@ -1,9 +1,12 @@
 using System.Text;
 
-namespace ProjectController.TCPCommunication;
+namespace ProjectController.Projector;
 
-public static class TCPConsts
+public static class ProjectorConstants
 {
+    public const string ProjectorHost = "192.168.0.150";
+    public const int ProjectorPort = 3629;
+    
     public enum ProjectorCommands
     {
         SystemControlStartCommunication,

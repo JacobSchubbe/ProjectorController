@@ -1,88 +1,48 @@
 using Microsoft.AspNetCore.SignalR;
-using ProjectController.TCPCommunication;
-using static ProjectController.TCPCommunication.TCPConsts;
+using ProjectController.ADB;
+using ProjectController.Projector;
+using static ProjectController.Projector.ProjectorConstants;
 
 public class GUIHub : Hub
 {
     private readonly ILogger<GUIHub> logger;
-    private readonly TcpConnection tcpConnection;
+    private readonly ProjectorConnection projectorConnection;
+    private readonly AdbConnection adbConnection;
     
-    public GUIHub(ILogger<GUIHub> logger, TcpConnection tcpConnection)
+    public GUIHub(ILogger<GUIHub> logger, ProjectorConnection projectorConnection, AdbConnection adbConnection)
     {
         this.logger = logger;
-        this.tcpConnection = tcpConnection;
-        this.tcpConnection.RegisterOnDisconnect(SendIsConnectedToProjector);
-    }
-    
-    private async Task SendIsConnectedToProjector(bool isConnected)
-    {
-        logger.LogInformation($"Sending IsConnectedToProjector: {isConnected}");
-        await Clients.All.SendAsync("IsConnectedToProjector", isConnected);
+        this.projectorConnection = projectorConnection;
+        this.adbConnection = adbConnection;
     }
     
     public async Task IsConnectedToProjectorQuery()
     {
         logger.LogInformation("Received: IsConnectedToProjectorQuery");
-        await SendIsConnectedToProjector(tcpConnection.IsConnected);
+        await projectorConnection.SendIsConnectedToProjector(projectorConnection.IsConnected);
     }
     
     public async Task ReceiveProjectorCommand(ProjectorCommands command)
     {
         logger.LogInformation($"Received command: {command.ToString()}");
-        await tcpConnection.QueueCommand(new []{command}, SendCommandResponseToClients);
+        await projectorConnection.EnqueueCommand(command);
     }
     
     public async Task ReceiveProjectorQuery(ProjectorCommands command)
     {
         logger.LogInformation($"Received query: {command.ToString()}");
-        await tcpConnection.QueueCommand(new []{command}, SendQueryResponseToClients);
+        await projectorConnection.EnqueueQuery(command);
     }
     
-    private async Task SendCommandResponseToClients(ProjectorCommands commandType, string response)
+    public async Task ReceiveAndroidCommand(KeyCodes command)
     {
-        if (response == SuccessfulCommandResponse)
-            response = $"Success! {response}";
-        
-        logger.LogInformation($"Sending command response: {response}");
-        await Clients.All.SendAsync("ReceiveMessage", new
-        {
-            message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
-        });
+        logger.LogInformation($"Received command: {command.ToString()}");
+        await adbConnection.EnqueueCommand(command);
     }
-
-    private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
+    
+    public async Task ReceiveAndroidQuery(KeyCodes command)
     {
-        logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
-        var status = StringToPowerStatus(rawResponse);
-        if (status == null)
-        {
-            rawResponse = rawResponse.Replace("=", " ").TrimEnd(':', '\r');
-            ProjectorCommands? currentStatus = null;
-            foreach (var kvp in ProjectorCommandsDictionary.Where(kvp => kvp.Value == rawResponse))
-            {
-                currentStatus = kvp.Key;
-                break;
-            }
-
-            if (!currentStatus.HasValue && queryType != ProjectorCommands.SystemControlPowerQuery)
-            {       
-                logger.LogInformation($"No status matching current status: {rawResponse}");
-                return;
-            }
-
-            logger.LogInformation($"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
-            await Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
-            {
-                queryType, currentStatus = currentStatus
-            });
-        }
-        else
-        {
-            logger.LogInformation($"Sending current status {status.ToString()} for query {queryType.ToString()}");
-            await Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
-            {
-                queryType, currentStatus = status
-            });
-        }
+        logger.LogInformation($"Received query: {command.ToString()}");
+        await adbConnection.EnqueueQuery(command);
     }
 }
