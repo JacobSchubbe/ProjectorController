@@ -21,46 +21,82 @@
       <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     </ItemGroup>
     <ItemGroup>
-      <None Update="ADB\Resources\adb.exe">
+      <None Update="ADB\Resources\Windows\adb.exe">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\AdbWinApi.dll">
+      <None Update="ADB\Resources\Windows\AdbWinApi.dll">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\AdbWinUsbApi.dll">
+      <None Update="ADB\Resources\Windows\AdbWinUsbApi.dll">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\etc1tool.exe">
+      <None Update="ADB\Resources\Windows\etc1tool.exe">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\fastboot.exe">
+      <None Update="ADB\Resources\Windows\fastboot.exe">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\hprof-conv.exe">
+      <None Update="ADB\Resources\Windows\hprof-conv.exe">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\libwinpthread-1.dll">
+      <None Update="ADB\Resources\Windows\libwinpthread-1.dll">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\make_f2fs.exe">
+      <None Update="ADB\Resources\Windows\make_f2fs.exe">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\make_f2fs_casefold.exe">
+      <None Update="ADB\Resources\Windows\make_f2fs_casefold.exe">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\mke2fs.conf">
+      <None Update="ADB\Resources\Windows\mke2fs.conf">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\mke2fs.exe">
+      <None Update="ADB\Resources\Windows\mke2fs.exe">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\NOTICE.txt">
+      <None Update="ADB\Resources\Windows\NOTICE.txt">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\source.properties">
+      <None Update="ADB\Resources\Windows\source.properties">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Update="ADB\Resources\sqlite3.exe">
+      <None Update="ADB\Resources\Windows\sqlite3.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\lib64\libc++.so">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\adb">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\etc1tool">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\fastboot">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\hprof-conv">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\make_f2fs">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\make_f2fs_casefold">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\mke2fs">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\mke2fs.conf">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\NOTICE.txt">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\source.properties">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="ADB\Resources\LinuxArm64\sqlite3">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>
