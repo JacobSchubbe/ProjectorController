@@ -6,10 +6,10 @@
     <div >
       <label>Select Input:</label>
       <select id="inputDropdown" v-model="state.selectedInput" @change="handleDropdownChange">
-        <option :value=tcpConsts.ProjectorCommands.SystemControlSourceHDMI1>Input1</option>
-        <option :value=tcpConsts.ProjectorCommands.SystemControlSourceHDMI2>Input2</option>
-        <option :value=tcpConsts.ProjectorCommands.SystemControlSourceHDMI3>Input3</option>
-        <option :value=tcpConsts.ProjectorCommands.SystemControlSourceLAN>LAN</option>
+        <option :value=projectorConstants.ProjectorCommands.SystemControlSourceHDMI1>Input1</option>
+        <option :value=projectorConstants.ProjectorCommands.SystemControlSourceHDMI2>Input2</option>
+        <option :value=projectorConstants.ProjectorCommands.SystemControlSourceHDMI3>Input3</option>
+        <option :value=projectorConstants.ProjectorCommands.SystemControlSourceLAN>LAN</option>
       </select>
     </div>
     <label>GUI Connected: {{ state.GUIConnected }}</label>    
@@ -19,34 +19,34 @@
       <div class="control-row">
         <button :disabled="buttonDisabledPowerButton" class="control-button" @click="handleClickProjectorCommands(
             state.ProjectorPoweredOn ? 
-            tcpConsts.ProjectorCommands.SystemControlPowerOff : tcpConsts.ProjectorCommands.SystemControlPowerOn)"
+            projectorConstants.ProjectorCommands.SystemControlPowerOff : projectorConstants.ProjectorCommands.SystemControlPowerOn)"
         >
           {{ powerButtonText }}
         </button>
-        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlUp)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_UP)">
           Up
         </button>
-        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlHome)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_HOME)">
           Home
         </button>
       </div>
 
       <!-- Row 2: Left, Enter, and Right Buttons -->
       <div class="control-row">
-        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlLeft)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_LEFT)">
           Left
         </button>
-        <button :disabled="buttonDisabledWhenPowerOff" class="control-button enter-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlEnter)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button enter-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_ENTER)">
           Enter
         </button>
-        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlRight)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_RIGHT)">
           Right
         </button>
       </div>
 
       <!-- Row 3: Down Button -->
       <div class="control-row">
-        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(tcpConsts.ProjectorCommands.KeyControlDown)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_DOWN)">
           Down
         </button>
       </div>
@@ -56,8 +56,10 @@
 
 <script lang="ts">
 import { reactive, onMounted, computed } from "vue";
-import * as signalr from "./signalrService";
-import * as tcpConsts from "./TcpConsts";
+import { SignalRInstance } from "./SignalRServiceManager";
+import * as signalr from "./SignalRServiceManager";
+import * as projectorConstants from "./Constants/ProjectorConstants";
+import * as adbConstants from "./Constants/AdbConstants";
 
 export default {
   name: 'App',
@@ -88,7 +90,7 @@ export default {
     });
 
     onMounted(async () => {
-      await signalr.initializeSignalR(
+      await SignalRInstance.initialize(
           (isConnected: boolean) => { handleProjectorConnectionStateChange(isConnected); },
           (response:signalr.QueryResponse) => { handleQueryResponse(response.queryType, response.currentStatus); },
           (connectionStatus:boolean) => { handleGUIConnectionStateChange(connectionStatus); }
@@ -99,25 +101,25 @@ export default {
       console.log(`Projector Connected: ${isConnected}`);
       state.ProjectorConnected = isConnected;
       if (state.ProjectorConnected) {
-        signalr.queryForInitialProjectorStatuses();
+        SignalRInstance.queryForInitialProjectorStatuses();
       }
       else
       {
         state.selectedInput = -1;
         state.ProjectorPoweredOn = false;
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        signalr.queryForInitialBackendStatuses();
+        SignalRInstance.queryForInitialBackendStatuses();
       }
     }
     
     const handleQueryResponse = (queryType:Number, currentStatus:Number) => {
       switch (queryType) {
-        case tcpConsts.ProjectorCommands.SystemControlSourceQuery:
-          state.selectedInput = currentStatus as tcpConsts.ProjectorCommands;
+        case projectorConstants.ProjectorCommands.SystemControlSourceQuery:
+          state.selectedInput = currentStatus as projectorConstants.ProjectorCommands;
           break;
-        case tcpConsts.ProjectorCommands.SystemControlPowerQuery:
-          var powerStatus = currentStatus as tcpConsts.PowerStatus;
-          var isPoweredOn = powerStatus === tcpConsts.PowerStatus.Warmup || powerStatus == tcpConsts.PowerStatus.LampOn;
+        case projectorConstants.ProjectorCommands.SystemControlPowerQuery:
+          var powerStatus = currentStatus as projectorConstants.PowerStatus;
+          var isPoweredOn = powerStatus === projectorConstants.PowerStatus.Warmup || powerStatus == projectorConstants.PowerStatus.LampOn;
           state.ProjectorPoweredOn = isPoweredOn;
           console.log("Projector Powered on: " + isPoweredOn);
           break;
@@ -136,23 +138,28 @@ export default {
       }
     }
     
-    const handleClickProjectorCommands = async (command: tcpConsts.ProjectorCommands) => {
-      signalr.sendProjectorCommands(command);
+    const handleClickAndroidCommand = async (command: adbConstants.KeyCodes) => {
+      SignalRInstance.sendAndroidCommand(command);
+      console.log(`Command sent: ${command}`);
+    }
+    
+    const handleClickProjectorCommands = async (command: projectorConstants.ProjectorCommands) => {
+      SignalRInstance.sendProjectorCommand(command);
       console.log(`Command sent: ${command}`);
 
       switch (command) {
-        case tcpConsts.ProjectorCommands.SystemControlPowerOff:
+        case projectorConstants.ProjectorCommands.SystemControlPowerOff:
           while (state.ProjectorConnected) {
             console.log("Waiting for power off...");
-            signalr.sendProjectorQuery(tcpConsts.ProjectorCommands.SystemControlPowerQuery)
+            SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
           console.log("Power off complete");
           break;
-        case tcpConsts.ProjectorCommands.SystemControlPowerOn:
+        case projectorConstants.ProjectorCommands.SystemControlPowerOn:
           while (!state.ProjectorConnected) {
             console.log("Waiting for power on...");
-            signalr.sendProjectorQuery(tcpConsts.ProjectorCommands.SystemControlPowerQuery)
+            SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
           console.log("Power on complete");
@@ -162,11 +169,11 @@ export default {
     
     const handleDropdownChange = () => {
       console.log(`Selected Input: ${state.selectedInput}`);
-      signalr.sendProjectorCommands(state.selectedInput);
+      SignalRInstance.sendProjectorCommand(state.selectedInput);
       console.log(`Command sent: ${state.selectedInput}`);
     };
 
-    return { state, handleDropdownChange, handleClickProjectorCommands, buttonDisabledPowerButton, buttonDisabledWhenPowerOff, tcpConsts, powerButtonText };
+    return { state, handleDropdownChange, handleClickAndroidCommand, handleClickProjectorCommands, buttonDisabledPowerButton, buttonDisabledWhenPowerOff, adbConstants, projectorConstants, powerButtonText };
   }
 };
 </script>

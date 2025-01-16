@@ -1,6 +1,7 @@
 // RUN apt-get update && apt-get install -y android-tools-adb
 
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using ProjectController.ADB;
 
@@ -79,9 +80,23 @@ public class ADBClient
         
     }
     
+    private static string GetMachineArchitecture()
+    {
+        if (RuntimeInformation.ProcessArchitecture == Architecture.X64)
+            return "x64";
+        if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
+            return "arm64";
+    
+        throw new NotSupportedException("Unknown architecture.");
+    }
+    
     private CommandSubprocess ExecuteCommand(string command, bool blocking = true, bool includeSelectedSerial = true)
     {
-        var adbBasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ADB", "Resources", "adb.exe"); // Path to local adb.exe
+        var adbBasePath = GetMachineArchitecture() switch
+        {
+            "x64" => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ADB", "Resources", "Windows", "adb.exe"),
+            _ => "adb"
+        };
 
         if (!File.Exists(adbBasePath))
         {
@@ -418,7 +433,7 @@ public class ADBClient
         return ExecuteCommand($"shell {command}");
     }
     
-    public void SendKeyEventInput(KeyCodes keycode, bool longPress = false)
+    public Task SendKeyEventInput(KeyCodes keycode, bool longPress = false)
     {
         if (_selectedDevice == null)
         {
@@ -433,6 +448,7 @@ public class ADBClient
         }
 
         ExecuteShellCommand(command);
+        return Task.CompletedTask;
     }
     
     public void SendTextInput(string text, bool encodeSpaces = true)

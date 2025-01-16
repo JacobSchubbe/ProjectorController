@@ -2,33 +2,22 @@ namespace ProjectController.ADB;
 
 public class AndroidTVController
 {
-    // private readonly ILogger<AndroidTVController> logger;
+    private readonly ILogger<AndroidTVController> logger;
     private readonly ADBClient _adbClient;
     private readonly string _ip = "192.168.0.236:5555";
     private readonly bool verbose = false;
     private readonly bool showCommand = false;
 
-    public AndroidTVController()
+    public AndroidTVController(ILogger<AndroidTVController> logger)
     {
-        // this.logger = logger;
+        this.logger = logger;
         _adbClient = new ADBClient(Log, verbose, showCommand);
-        Testing().ConfigureAwait(true).GetAwaiter();
+        Connect();
     }
 
     private void Log(string message)
     {
-        Console.WriteLine(message);
-    }
-
-    private async Task Testing()
-    {
-        Connect();
-        await Task.Delay(5000);
-        PressHome();
-        await Task.Delay(5000);
-        PressDpadRight();
-        await Task.Delay(5000);
-        PressDpadDown();
+        logger.LogDebug(message);
     }
     
     public bool Connect()
@@ -37,11 +26,11 @@ public class AndroidTVController
         var result = _adbClient.Connect(_ip);
         if (result)
         {
-            Log("Connected successfully.");
+            Log($"Connected successfully to {_ip}.");
         }
         else
         {
-            Log("Connection failed.");
+            Log($"Connection failed to {_ip}.");
         }
         return result;
     }
@@ -57,42 +46,45 @@ public class AndroidTVController
     {
         return _adbClient;
     }
-
-    // Navigation Commands
-    public void PressHome() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_HOME);
-    public void PressTv() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
-    public void PressBack() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_BACK);
-    public void PressDpadUp() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_UP);
-    public void PressDpadDown() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_DOWN);
-    public void PressDpadLeft() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_LEFT);
-    public void PressDpadRight() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_RIGHT);
-    public void PressEnter() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_ENTER);
-
-    // Volume Commands
-    public void PressVolumeUp() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_UP);
-    public void PressVolumeDown() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_DOWN);
-    public void PressVolumeMute() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_MUTE);
-
-    // Power Commands
-    public bool? IsPoweredOn() => _adbClient.IsPoweredOn();
-    public void PressPower() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_POWER);
-    public void PressSleep() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_SLEEP);
-    public void PressSoftSleep() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_SOFT_SLEEP);
-    public void PressWakeup() => _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_WAKEUP);
-
-    // Channel Commands
-    public void PressChannelUp()
+    
+    // Define the dictionary mapping KeyCodes to corresponding methods.
+    public Dictionary<KeyCodes, Func<Task>> KeyCommands => new()
     {
-        _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
-        _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_CHANNEL_UP);
-    }
+        // Navigation Commands
+        { KeyCodes.KEYCODE_HOME, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_HOME) },
+        { KeyCodes.KEYCODE_TV, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV) },
+        { KeyCodes.KEYCODE_BACK, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_BACK) },
+        { KeyCodes.KEYCODE_DPAD_UP, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_UP) },
+        { KeyCodes.KEYCODE_DPAD_DOWN, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_DOWN) },
+        { KeyCodes.KEYCODE_DPAD_LEFT, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_LEFT) },
+        { KeyCodes.KEYCODE_DPAD_RIGHT, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_RIGHT) },
+        { KeyCodes.KEYCODE_ENTER, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_ENTER) },
 
-    public void PressChannelDown()
-    {
-        _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
-        _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_CHANNEL_DOWN);
-    }
+        // Volume Commands
+        { KeyCodes.KEYCODE_VOLUME_UP, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_UP) },
+        { KeyCodes.KEYCODE_VOLUME_DOWN, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_DOWN) },
+        { KeyCodes.KEYCODE_VOLUME_MUTE, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_MUTE) },
 
+        // Power Commands
+        { KeyCodes.KEYCODE_POWER, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_POWER) },
+        { KeyCodes.KEYCODE_SLEEP, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_SLEEP) },
+        { KeyCodes.KEYCODE_SOFT_SLEEP, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_SOFT_SLEEP) },
+        { KeyCodes.KEYCODE_WAKEUP, async () => await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_WAKEUP) },
+
+        // Channel Commands
+        { KeyCodes.KEYCODE_CHANNEL_UP, async () => 
+        {
+            await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
+            await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_CHANNEL_UP);
+        }},
+        { KeyCodes.KEYCODE_CHANNEL_DOWN, async () =>
+        {
+            await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
+            await _adbClient.SendKeyEventInput(KeyCodes.KEYCODE_CHANNEL_DOWN);
+        }}
+    };
+    
+    // Method for channel numbers since it has special logic.
     public void PressChannelNumber(string channelNumber)
     {
         var numbersKeyCodes = new Dictionary<char, KeyCodes>
@@ -113,12 +105,36 @@ public class AndroidTVController
 
         foreach (var digit in channelNumber)
         {
-            _adbClient.SendKeyEventInput(numbersKeyCodes[digit]);
+            if (numbersKeyCodes.TryGetValue(digit, out var digitKeyCode))
+            {
+                _adbClient.SendKeyEventInput(digitKeyCode);
+            }
         }
     }
-
+    
+    
     // App Commands
     public void OpenApp(AndroidTVApps app)
+    {
+        if (AppCommands.TryGetValue(app, out var action))
+        {
+            action.Invoke();
+        }
+        else
+        {
+            Console.WriteLine($"App {app} is not mapped to any command.");
+        }
+    }
+    private Dictionary<AndroidTVApps, Action> AppCommands => new()
+    {
+        { AndroidTVApps.YouTube, () => ExecuteOpenApp(AndroidTVApps.YouTube) },
+        { AndroidTVApps.Netflix, () => ExecuteOpenApp(AndroidTVApps.Netflix) },
+        { AndroidTVApps.AmazonPrime, () => ExecuteOpenApp(AndroidTVApps.AmazonPrime) },
+        { AndroidTVApps.WatchIt, () => ExecuteOpenApp(AndroidTVApps.WatchIt) },
+        { AndroidTVApps.Shahid, () => ExecuteOpenApp(AndroidTVApps.Shahid) }
+    };
+
+    private void ExecuteOpenApp(AndroidTVApps app)
     {
         var packageActivity = app.GetPackageActivity(); // Use the GetPackageActivity extension method
         var parts = packageActivity.Split('/'); // Split the package and activity strings
@@ -126,9 +142,4 @@ public class AndroidTVController
         var activity = parts[1];
         _adbClient.StartApp(package, activity);
     }
-    public void OpenYouTube() => OpenApp(AndroidTVApps.YouTube);
-    public void OpenNetflix() => OpenApp(AndroidTVApps.Netflix);
-    public void OpenAmazonPrime() => OpenApp(AndroidTVApps.AmazonPrime);
-    public void OpenWatchIt() => OpenApp(AndroidTVApps.WatchIt);
-    public void OpenShahid() => OpenApp(AndroidTVApps.Shahid);
 }

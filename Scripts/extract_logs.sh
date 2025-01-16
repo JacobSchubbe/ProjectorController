@@ -8,8 +8,9 @@ LOCAL_DEST="./logs"            # Local directory to save logs
 
 # Create local destination directory if it doesn't exist
 mkdir -p "$LOCAL_DEST"
+TODAY=$(date +"%Y-%m-%d")
 
 # Copy logs from Raspberry Pi to local machine
-scp -r "${PI_USER}@${PI_HOST}:${PI_LOG_PATH}/*" "$LOCAL_DEST"
+scp "${PI_USER}@${PI_HOST}:${PI_LOG_PATH}/*${TODAY}*" "$LOCAL_DEST"
 
 echo "Logs successfully extracted to $LOCAL_DEST"
