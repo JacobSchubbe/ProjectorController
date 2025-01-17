@@ -25,10 +25,32 @@ public class AdbConnection
         await taskRunner.Start(SendCommand);
         // androidTvController.Connect();
     }
+    
+    public bool IsConnected => androidTvController.IsConnected();
+
+    public async Task SendIsConnectedToProjector(bool isConnected)
+    {
+        logger.LogInformation($"Sending IsConnectedToAndroidTVQuery: {isConnected}");
+        await hub.Clients.All.SendAsync("IsConnectedToAndroidTVQuery", isConnected);
+    }
 
     public async Task EnqueueCommand(KeyCodes command)
     {
         await taskRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+    }
+    
+    public async Task EnqueueOpenAppCommand(KeyCodes command)
+    {
+        var app = (command) switch
+        {
+            KeyCodes.Netflix => AndroidTVApps.Netflix,
+            KeyCodes.Youtube => AndroidTVApps.YouTube,
+            KeyCodes.AmazonPrime => AndroidTVApps.AmazonPrime, 
+            _ => throw new NotImplementedException()
+        };
+        
+        androidTvController.OpenApp(app);
+        // await taskRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
     }
     
     public async Task EnqueueQuery(KeyCodes command)

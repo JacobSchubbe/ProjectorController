@@ -309,5 +309,15 @@ public enum KeyCodes : int
     KEYCODE_DEMO_APP_1 = 301,
     KEYCODE_DEMO_APP_2 = 302,
     KEYCODE_DEMO_APP_3 = 303,
-    KEYCODE_DEMO_APP_4 = 304
+    KEYCODE_DEMO_APP_4 = 304,
+    
+    
+    Netflix = 10000,
+    Youtube = 10001,
+    AmazonPrime = 10002,
+    Hulu = 10003,
+    DisneyPlus = 10004,
+    AppleTV = 10005,
+    GoogleTV = 10006,
+
 }

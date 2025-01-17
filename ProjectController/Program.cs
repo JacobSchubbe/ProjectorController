@@ -8,7 +8,6 @@ using static ProjectController.Projector.ProjectorConstants;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<GUIHub>();
 builder.Services.AddSingleton<TcpConnection>();
 builder.Services.AddSingleton<ADBClient>();
 builder.Services.AddSingleton<TaskRunner<ProjectorCommands>>();

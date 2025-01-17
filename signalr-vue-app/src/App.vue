@@ -1,7 +1,5 @@
 <template>
   <div id="app">
-    <h1>Projector Controller</h1>
-
     <!-- Dropdown Menu -->
     <div >
       <label>Select Input:</label>
@@ -15,23 +13,21 @@
     <label>GUI Connected: {{ state.GUIConnected }}</label>    
 
     <div class="projector-controls">
-      <!-- Row 1: Up Button -->
+      <!-- Row 1 -->
       <div class="control-row">
         <button :disabled="buttonDisabledPowerButton" class="control-button" @click="handleClickProjectorCommands(
-            state.ProjectorPoweredOn ? 
-            projectorConstants.ProjectorCommands.SystemControlPowerOff : projectorConstants.ProjectorCommands.SystemControlPowerOn)"
-        >
+            state.ProjectorPoweredOn ? projectorConstants.ProjectorCommands.SystemControlPowerOff : projectorConstants.ProjectorCommands.SystemControlPowerOn)">
           {{ powerButtonText }}
         </button>
         <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_UP)">
           Up
         </button>
-        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_HOME)">
-          Home
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button">
+          -
         </button>
       </div>
 
-      <!-- Row 2: Left, Enter, and Right Buttons -->
+      <!-- Row 2 -->
       <div class="control-row">
         <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_LEFT)">
           Left
@@ -44,18 +40,46 @@
         </button>
       </div>
 
-      <!-- Row 3: Down Button -->
+      <!-- Row 3 -->
       <div class="control-row">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_HOME)">
+          Home
+        </button>
         <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_DOWN)">
           Down
         </button>
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_BACK)">
+          Back
+        </button>
       </div>
+      <!-- Row 4: Volume Buttons -->
+      <div class="control-row">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_VOLUME_UP)">
+          Volume<br/><br/>-
+        </button>
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_VOLUME_DOWN)">
+          Volume<br/><br/>+
+        </button>
+      </div>
+      <!-- Row 5: Netflix, YouTube, and Amazon Prime -->
+      <div class="control-row">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button media-button" @click="handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.Netflix)">
+          <img src="/assets/netflix-logo.png" alt="Netflix" class="media-icon" />
+        </button>
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button media-button" @click="handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.Youtube)">
+          <img src="/assets/youtube-logo.png" alt="YouTube" class="media-icon" />
+        </button>
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button media-button" @click="handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.AmazonPrimeVideo)">
+          <img src="/assets/prime-video-logo.png" alt="Amazon Prime" class="media-icon" />
+        </button>
+      </div>
+
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { reactive, onMounted, computed } from "vue";
+import { reactive, onMounted, computed, onUnmounted } from "vue";
 import { SignalRInstance } from "./SignalRServiceManager";
 import * as signalr from "./SignalRServiceManager";
 import * as projectorConstants from "./Constants/ProjectorConstants";
@@ -68,6 +92,7 @@ export default {
       selectedInput: -1,
       GUIConnected: false,
       ProjectorConnected: false,
+      AndroidTVConnected: false,
       ProjectorPoweredOn: false,
     });
     
@@ -92,13 +117,13 @@ export default {
     onMounted(async () => {
       await SignalRInstance.initialize(
           (isConnected: boolean) => { handleProjectorConnectionStateChange(isConnected); },
+          (isConnected: boolean) => { handleAndroidTVConnectionStateChange(isConnected); },
           (response:signalr.QueryResponse) => { handleQueryResponse(response.queryType, response.currentStatus); },
           (connectionStatus:boolean) => { handleGUIConnectionStateChange(connectionStatus); }
       );
     });
     
     const handleProjectorConnectionStateChange = async (isConnected: boolean) => {
-      console.log(`Projector Connected: ${isConnected}`);
       state.ProjectorConnected = isConnected;
       if (state.ProjectorConnected) {
         SignalRInstance.queryForInitialProjectorStatuses();
@@ -107,6 +132,18 @@ export default {
       {
         state.selectedInput = -1;
         state.ProjectorPoweredOn = false;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        SignalRInstance.queryForInitialBackendStatuses();
+      }
+    }
+    
+    const handleAndroidTVConnectionStateChange = async (isConnected: boolean) => {
+      state.AndroidTVConnected = isConnected;
+      if (state.AndroidTVConnected) {
+        SignalRInstance.queryForInitialProjectorStatuses();
+      }
+      else
+      {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         SignalRInstance.queryForInitialBackendStatuses();
       }
@@ -121,7 +158,6 @@ export default {
           var powerStatus = currentStatus as projectorConstants.PowerStatus;
           var isPoweredOn = powerStatus === projectorConstants.PowerStatus.Warmup || powerStatus == projectorConstants.PowerStatus.LampOn;
           state.ProjectorPoweredOn = isPoweredOn;
-          console.log("Projector Powered on: " + isPoweredOn);
           break;
         default:
           console.error("Invalid input selected");
@@ -140,6 +176,11 @@ export default {
     
     const handleClickAndroidCommand = async (command: adbConstants.KeyCodes) => {
       SignalRInstance.sendAndroidCommand(command);
+      console.log(`Command sent: ${command}`);
+    }
+    
+    const handleClickAndroidOpenAppCommand = async (command: adbConstants.KeyCodes) => {
+      SignalRInstance.sendAndroidOpenAppCommand(command);
       console.log(`Command sent: ${command}`);
     }
     
@@ -173,7 +214,35 @@ export default {
       console.log(`Command sent: ${state.selectedInput}`);
     };
 
-    return { state, handleDropdownChange, handleClickAndroidCommand, handleClickProjectorCommands, buttonDisabledPowerButton, buttonDisabledWhenPowerOff, adbConstants, projectorConstants, powerButtonText };
+    // Handle tab focus to refresh state
+    const onTabFocused = () => {
+      if (!SignalRInstance.isConnected()) {
+        console.log("Tab regained focus. Reconnecting SignalR...");
+        SignalRInstance.initialize(
+            (isConnected) => handleProjectorConnectionStateChange(isConnected),
+            (isConnected) => handleAndroidTVConnectionStateChange(isConnected),
+            (response) => handleQueryResponse(response.queryType, response.currentStatus),
+            (connectionStatus) => handleGUIConnectionStateChange(connectionStatus)
+        );
+      } else {
+        console.log("Tab regained focus. Querying initial backend statuses...");
+        SignalRInstance.queryForInitialBackendStatuses();
+      }
+    };
+
+    // Add focus event listener
+    onMounted(() => {
+      console.log("App mounted. Setting up tab focus listener.");
+      window.addEventListener("focus", onTabFocused);
+    });
+
+    // Clean up (remove listener on app unmount)
+    onUnmounted(() => {
+      console.log("App unmounted. Removing tab focus listener.");
+      window.removeEventListener("focus", onTabFocused);
+    });
+
+    return { state, handleDropdownChange, handleClickAndroidCommand, handleClickAndroidOpenAppCommand, handleClickProjectorCommands, buttonDisabledPowerButton, buttonDisabledWhenPowerOff, adbConstants, projectorConstants, powerButtonText };
   }
 };
 </script>
@@ -245,4 +314,30 @@ select {
 
 .enter-button:hover {
   background-color: #1e7e34; /* Darker shade on hover for Enter button */
-}</style>
+}
+
+.media-button {
+  background-color: transparent; /* Make the button background fully transparent */
+  border: none; /* Remove borders for a cleaner visual */
+  padding: 0; /* Remove extra spacing around the image */
+  display: flex; /* Use flexbox for proper content alignment */
+  justify-content: center;
+  align-items: center;
+  width: 80px; /* Button should remain square */
+  height: 80px; /* Fixed button height (equal to width) */
+  cursor: pointer;
+  overflow: hidden; /* Clip any overflow from the image */
+}
+
+.media-button:disabled {
+  opacity: 0.6;
+  pointer-events: none; /* Disable pointer interactions when disabled */
+}
+
+.media-icon {
+  width: 100%; /* Ensure image completely fills the button */
+  height: 100%; /* Scale image to fill height */
+  object-fit: cover; /* Make sure image covers the entire button evenly */
+  pointer-events: none; /* Ensure clicking on the image still triggers the button */
+}
+</style>
