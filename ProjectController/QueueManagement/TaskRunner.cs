@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Connections;
+
 namespace ProjectController.QueueManagement;
 
 public class TaskRunner<TCommands> where TCommands : Enum
@@ -50,6 +52,8 @@ public class TaskRunner<TCommands> where TCommands : Enum
         {
             while (!token.IsCancellationRequested)
             {
+                token.ThrowIfCancellationRequested();
+                
                 if (commandQueue.Count == 0)
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(500), token);
@@ -84,7 +88,7 @@ public class TaskRunner<TCommands> where TCommands : Enum
                 }
                 catch (Exception e)
                 {
-                    logger.LogError($"Exception while trying to send a command: {e.Message}");
+                    logger.LogError($"Exception while trying to send a command. Type: {e.GetType().FullName}, Message: {e.Message}");
                 }
             
                 await Task.Delay(TimeSpan.FromMilliseconds(100), token);
@@ -92,6 +96,15 @@ public class TaskRunner<TCommands> where TCommands : Enum
         }
         catch (OperationCanceledException)
         {
+            await queueAccessSemaphore.WaitAsync(token);
+            try
+            {
+                commandQueue.Clear();
+            }
+            finally
+            {
+                queueAccessSemaphore.Release();
+            }
             logger.LogDebug("Canceled all commands.");
         }
         catch (Exception e)

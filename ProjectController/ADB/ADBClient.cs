@@ -14,15 +14,17 @@ public class ADBClient
     private string? _selectedDevice;
     private Process? _serverProcess;
 
+    private const string ADB_PATH_LINUX_ARM64 = "adb";
+    private static readonly string ADB_PATH_DEVELOPMENT =
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ADB", "Resources", "Windows", "adb.exe");
+    
     public ADBClient(Action<string> logger, bool verbose = false, bool showCommand = false)
     {
-        this.logger = logger ?? (message => { });
+        this.logger = logger;
         _verbose = verbose;
         _showCommand = showCommand;
         _devices = new List<string>();
         Log("ADB client initialized.");
-        
-        // StartServer();
     }
 
     private class CommandSubprocess
@@ -77,7 +79,6 @@ public class ADBClient
             
             return string.Empty;
         }
-        
     }
     
     private static string GetMachineArchitecture()
@@ -94,11 +95,11 @@ public class ADBClient
     {
         var adbBasePath = GetMachineArchitecture() switch
         {
-            "x64" => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ADB", "Resources", "Windows", "adb.exe"),
-            _ => "adb"
+            "x64" => ADB_PATH_DEVELOPMENT,
+            _ => ADB_PATH_LINUX_ARM64
         };
-
-        if (!File.Exists(adbBasePath))
+        
+        if (adbBasePath != ADB_PATH_LINUX_ARM64 && !File.Exists(adbBasePath))
         {
             throw new FileNotFoundException("ADB executable not found at path: " + adbBasePath);
         }
