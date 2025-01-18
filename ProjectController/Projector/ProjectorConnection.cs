@@ -41,8 +41,8 @@ public class ProjectorConnection
     {
         logger.LogInformation("Connected to projector.");
         await SendIsConnectedToProjector();
-        await taskRunner.EnqueueCommand(new[] { ProjectorCommands.SystemControlStartCommunication }, SendCommandResponseToClients);
-        await taskRunner.EnqueueCommand(new[] { ProjectorCommands.SystemControlPowerQuery }, SendCommandResponseToClients);
+        await EnqueueCommand(ProjectorCommands.SystemControlStartCommunication);
+        await EnqueueCommand(ProjectorCommands.SystemControlPowerQuery);
     }
     
     private async Task OnDisconnected()
@@ -56,12 +56,16 @@ public class ProjectorConnection
         logger.LogInformation($"Sending IsConnectedToProjector: {IsConnected}");
         await hub.Clients.All.SendAsync("IsConnectedToProjector", IsConnected);
     }
-    
-    public bool IsConnected => tcpConnection.IsConnected;
+
+    private bool IsConnected => tcpConnection.IsConnected;
 
     public async Task EnqueueCommand(ProjectorCommands command)
     {
-        await taskRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        await taskRunner.EnqueueCommand(new[] { command }, async (commandType, response) =>
+        {
+            await UpdateAllClients(commandType);
+            await SendCommandResponseToClients(commandType, response);
+        });
     }
     
     public async Task EnqueueQuery(ProjectorCommands command)
@@ -87,7 +91,7 @@ public class ProjectorConnection
         if (response == SuccessfulCommandResponse)
             response = $"Success! {response}";
         
-        logger.LogInformation($"Sending command response: {response}");
+        logger.LogInformation($"Sending command response: {response.Replace("\r", "\\r")}");
         await hub.Clients.All.SendAsync("ReceiveMessage", new
         {
             message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
@@ -96,7 +100,7 @@ public class ProjectorConnection
 
     private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
     {
-        logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
+        logger.LogInformation($"Sending query response. Raw response: {rawResponse.Replace("\r", "\\r")}");
         var status = StringToPowerStatus(rawResponse);
         if (status == null)
         {
@@ -116,18 +120,34 @@ public class ProjectorConnection
 
             logger.LogInformation(
                 $"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
-            await hub.Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
-            {
-                queryType, currentStatus
-            });
+            await SendQueryResponse(queryType, currentStatus);
         }
         else
         {
             logger.LogInformation($"Sending current status {status.ToString()} for query {queryType.ToString()}");
-            await hub.Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
-            {
-                queryType, currentStatus = status
-            });
+            await SendQueryResponse(queryType, status);
         }
+    }
+
+    private async Task UpdateAllClients(ProjectorCommands commandType)
+    {
+        switch (commandType)
+        {
+            case ProjectorCommands.SystemControlSourceHDMI1:
+            case ProjectorCommands.SystemControlSourceHDMI2:
+            case ProjectorCommands.SystemControlSourceHDMI3:
+            case ProjectorCommands.SystemControlSourceHDMILAN:
+                logger.LogDebug($"Sending updated source to all clients: {commandType.ToString()}.");
+                await SendQueryResponse(ProjectorCommands.SystemControlSourceQuery, commandType);
+                break;
+        }
+    }
+
+    private async Task SendQueryResponse<T>(ProjectorCommands queryType, T status)
+    {
+        await hub.Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
+        {
+            queryType, currentStatus = status
+        });
     }
 }

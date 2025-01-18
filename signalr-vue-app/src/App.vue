@@ -4,10 +4,8 @@
     <div >
       <label>Select Input:</label>
       <select id="inputDropdown" v-model="state.selectedInput" @change="handleDropdownChange">
-        <option :value=projectorConstants.ProjectorCommands.SystemControlSourceHDMI1>Input1</option>
-        <option :value=projectorConstants.ProjectorCommands.SystemControlSourceHDMI2>Input2</option>
-        <option :value=projectorConstants.ProjectorCommands.SystemControlSourceHDMI3>Input3</option>
-        <option :value=projectorConstants.ProjectorCommands.SystemControlSourceLAN>LAN</option>
+        <option :value=projectorConstants.ProjectorCommands.SystemControlSourceHDMI1>TV/Switch</option>
+        <option :value=projectorConstants.ProjectorCommands.SystemControlSourceHDMI3>SmartTV</option>
       </select>
     </div>
     <label>GUI Connected: {{ state.GUIConnected }}</label>    

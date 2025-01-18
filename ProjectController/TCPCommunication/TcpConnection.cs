@@ -157,11 +157,11 @@ public sealed class TcpConnection : IDisposable
         var commandBytes = Encoding.ASCII.GetBytes(commandStr);
         socket.Send(commandBytes);
 
-        logger.LogInformation($"Sent command: {commandStr}");
+        logger.LogInformation($"Sent command: {commandStr.Replace("\r", "\\r")}");
 
         var bytesRead = socket.Receive(buffer);
         var rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-        logger.LogInformation($"Received response: {rawResponse}");
+        logger.LogInformation($"Received response: {rawResponse.Replace("\r", "\\r")}");
         return rawResponse;
     }
     
