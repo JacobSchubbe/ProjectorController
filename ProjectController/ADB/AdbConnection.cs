@@ -10,20 +10,38 @@ public class AdbConnection
     private readonly IHubContext<GUIHub> hub;
     private readonly AndroidTVController androidTvController;
     private readonly TaskRunner<KeyCodes> taskRunner;
-
+    private string ip => androidTvController.Ip;
     public AdbConnection(ILogger<ProjectorConnection> logger, IHubContext<GUIHub> hub, AndroidTVController androidTvController, TaskRunner<KeyCodes> taskRunner)
     {
         this.logger = logger;
         this.hub = hub;
         this.androidTvController = androidTvController;
         this.taskRunner = taskRunner;
-        Start().Wait();
+        _ = Start();
     }
 
     private async Task Start()
     {
+        androidTvController.AdbClient.RegisterOnDisconnect(OnDisconnected);
+        androidTvController.AdbClient.RegisterOnConnect(OnConnected);
         await taskRunner.Start(SendCommand);
-        // androidTvController.Connect();
+        await androidTvController.Connect(CancellationToken.None);
+    }
+    
+    private async Task OnConnected(string updatedIp)
+    {
+        if (ip != updatedIp)
+            return;
+        logger.LogInformation("Connected to AndroidTV.");
+        await SendIsConnectedToProjector(true);
+    }
+    
+    private async Task OnDisconnected(string updatedIp)
+    {
+        if (ip != updatedIp)
+            return;
+        logger.LogInformation("Disconnected from AndroidTV.");
+        await SendIsConnectedToProjector(false);
     }
     
     public bool IsConnected => androidTvController.IsConnected();
@@ -39,7 +57,7 @@ public class AdbConnection
         await taskRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
     }
     
-    public async Task EnqueueOpenAppCommand(KeyCodes command)
+    public Task EnqueueOpenAppCommand(KeyCodes command)
     {
         var app = (command) switch
         {
@@ -51,6 +69,7 @@ public class AdbConnection
         
         androidTvController.OpenApp(app);
         // await taskRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        return Task.CompletedTask;
     }
     
     public async Task EnqueueQuery(KeyCodes command)
@@ -82,8 +101,16 @@ public class AdbConnection
     {
         if (!androidTvController.IsConnected())
         {
-            if (!androidTvController.Connect())
-                return "Failed to connect to device.";
+            var timeout = 3;
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout));
+            try
+            {
+                await androidTvController.Connect(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return $"Failed to connect to device after {timeout} seconds.";
+            }
             
             await SendIsConnectedToProjector(IsConnected);
         }

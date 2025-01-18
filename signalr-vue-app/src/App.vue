@@ -93,15 +93,15 @@ export default {
       GUIConnected: false,
       ProjectorConnected: false,
       AndroidTVConnected: false,
-      ProjectorPoweredOn: false,
+      ProjectorPoweredOn: projectorConstants.PowerStatusGui.Pending,
     });
     
     const buttonDisabledWhenPowerOff = computed(() => {
-      return !state.GUIConnected || !state.ProjectorConnected || !state.ProjectorPoweredOn
+      return !state.GUIConnected || !state.ProjectorConnected || !state.ProjectorPoweredOn || !state.AndroidTVConnected || state.ProjectorPoweredOn != projectorConstants.PowerStatusGui.On;
     })
     
     const buttonDisabledPowerButton = computed(() => {
-      return !state.GUIConnected || !state.ProjectorConnected
+      return !state.GUIConnected || !state.ProjectorConnected || state.ProjectorPoweredOn == projectorConstants.PowerStatusGui.Pending;
     })
     
     const powerButtonText = computed(() => {
@@ -111,7 +111,9 @@ export default {
       if (!state.ProjectorConnected) {
         return "Projector Not Connected";
       }
-      return state.ProjectorPoweredOn ? "Turn Power Off" : "Turn Power On";
+      return state.ProjectorPoweredOn == projectorConstants.PowerStatusGui.Pending ?  "Loading..." 
+          : (state.ProjectorPoweredOn == projectorConstants.PowerStatusGui.On) ? 
+              "Turn Power Off" : "Turn Power On";
     });
 
     onMounted(async () => {
@@ -131,7 +133,7 @@ export default {
       else
       {
         state.selectedInput = -1;
-        state.ProjectorPoweredOn = false;
+        state.ProjectorPoweredOn = projectorConstants.PowerStatusGui.Pending;
         await new Promise((resolve) => setTimeout(resolve, 1000));
         SignalRInstance.getIsConnectedToProjector();
       }
@@ -160,9 +162,7 @@ export default {
           break;
         case projectorConstants.ProjectorCommands.SystemControlPowerQuery:
           console.log(`Projector Power query response: ${currentStatus}`);
-          var powerStatus = currentStatus as projectorConstants.PowerStatus;
-          var isPoweredOn = powerStatus === projectorConstants.PowerStatus.Warmup || powerStatus == projectorConstants.PowerStatus.LampOn;
-          state.ProjectorPoweredOn = isPoweredOn;
+          state.ProjectorPoweredOn = getPowerStatusGui(currentStatus as projectorConstants.PowerStatusProjector);
           if (state.ProjectorPoweredOn){
             SignalRInstance.queryForInitialProjectorStatuses();
           }
@@ -173,11 +173,23 @@ export default {
       }
     }
     
+    const getPowerStatusGui = (status:projectorConstants.PowerStatusProjector) => {
+      switch (status) {
+        case projectorConstants.PowerStatusProjector.StandbyNetworkOn:
+          return projectorConstants.PowerStatusGui.Off;
+        case projectorConstants.PowerStatusProjector.LampOn:
+        case projectorConstants.PowerStatusProjector.Warmup:
+          return projectorConstants.PowerStatusGui.On;
+        default:
+          return projectorConstants.PowerStatusGui.Pending;
+      }
+    }
+    
     const handleGUIConnectionStateChange = (isConnected: boolean) => {
       state.GUIConnected = isConnected;
       if (!state.GUIConnected) {
         state.selectedInput = -1;
-        state.ProjectorPoweredOn = false;
+        state.ProjectorPoweredOn = projectorConstants.PowerStatusGui.Pending;
         state.ProjectorConnected = false;
       }
     }
@@ -198,18 +210,18 @@ export default {
 
       switch (command) {
         case projectorConstants.ProjectorCommands.SystemControlPowerOff:
-          while (state.ProjectorPoweredOn) {
+          while (state.ProjectorPoweredOn != projectorConstants.PowerStatusGui.Off) {
             console.log("Waiting for power off...");
             SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 4000));
           }
           console.log("Power off complete");
           break;
         case projectorConstants.ProjectorCommands.SystemControlPowerOn:
-          while (!state.ProjectorPoweredOn) {
+          while (state.ProjectorPoweredOn != projectorConstants.PowerStatusGui.On) {
             console.log("Waiting for power on...");
             SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 4000));
           }
           console.log("Power on complete");
           break;

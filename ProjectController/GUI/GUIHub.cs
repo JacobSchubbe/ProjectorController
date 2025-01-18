@@ -25,7 +25,7 @@ public class GUIHub : Hub
     public async Task IsConnectedToProjectorQuery()
     {
         logger.LogInformation("Received: IsConnectedToProjectorQuery");
-        await projectorConnection.SendIsConnectedToProjector(projectorConnection.IsConnected);
+        await projectorConnection.SendIsConnectedToProjector();
     }
     
     public async Task IsConnectedToAndroidTVQuery()

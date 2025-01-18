@@ -21,7 +21,7 @@ public class ProjectorConnection
         this.hub = hub;
         this.tcpConnection = tcpConnection;
         this.taskRunner = queueRunner;
-        tcpConnection.RegisterOnDisconnect(SendIsConnectedToProjector);
+        tcpConnection.RegisterOnDisconnect(OnDisconnected);
         tcpConnection.RegisterOnConnect(OnConnected);
         taskRunner.PreCommandEvent += async cancellationToken =>
         {
@@ -40,14 +40,21 @@ public class ProjectorConnection
     private async Task OnConnected()
     {
         logger.LogInformation("Connected to projector.");
+        await SendIsConnectedToProjector();
         await taskRunner.EnqueueCommand(new[] { ProjectorCommands.SystemControlStartCommunication }, SendCommandResponseToClients);
         await taskRunner.EnqueueCommand(new[] { ProjectorCommands.SystemControlPowerQuery }, SendCommandResponseToClients);
     }
-
-    public async Task SendIsConnectedToProjector(bool isConnected)
+    
+    private async Task OnDisconnected()
     {
-        logger.LogInformation($"Sending IsConnectedToProjector: {isConnected}");
-        await hub.Clients.All.SendAsync("IsConnectedToProjector", isConnected);
+        logger.LogInformation("Disconnected from projector.");
+        await SendIsConnectedToProjector();
+    }
+
+    public async Task SendIsConnectedToProjector()
+    {
+        logger.LogInformation($"Sending IsConnectedToProjector: {IsConnected}");
+        await hub.Clients.All.SendAsync("IsConnectedToProjector", IsConnected);
     }
     
     public bool IsConnected => tcpConnection.IsConnected;
@@ -59,6 +66,12 @@ public class ProjectorConnection
     
     public async Task EnqueueQuery(ProjectorCommands command)
     {
+        if (command == ProjectorCommands.SystemControlPowerQuery)
+        {
+            logger.LogInformation("Sending query response for SystemControlPowerQuery: \"PWR=06:\"");
+            await SendQueryResponseToClients(command, "PWR=06\r:");
+        }
+        
         await taskRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
     }
     

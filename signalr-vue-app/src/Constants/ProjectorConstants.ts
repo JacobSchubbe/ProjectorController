@@ -66,7 +66,7 @@ export enum ProjectorCommands
     IRPointerRight,
 }
 
-export enum PowerStatus
+export enum PowerStatusProjector
 {
     StandbyNetworkOff = 0,
     LampOn = 1,
@@ -74,4 +74,12 @@ export enum PowerStatus
     CoolDown = 3,
     StandbyNetworkOn = 4,
     AbnormalityStandby = 5,
+    Unknown = 6
+}
+
+export enum PowerStatusGui
+{
+    Off = 0,
+    On = 1,
+    Pending = 2,
 }

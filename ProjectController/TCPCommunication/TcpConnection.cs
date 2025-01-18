@@ -9,7 +9,7 @@ public sealed class TcpConnection : IDisposable
     private readonly Socket socket;
     private readonly SemaphoreSlim connectionSemaphore = new(1, 1);
     
-    private event Func<bool, Task>? disconnectEvent;
+    private event Func<Task>? disconnectEvent;
     private event Func<Task>? connectEvent;
     private bool lastConnectionStatus;
     private readonly SemaphoreSlim connectionChangeCheckSemaphore = new(1, 1);
@@ -40,7 +40,7 @@ public sealed class TcpConnection : IDisposable
     
     public bool IsConnected => socket?.Connected ?? false;
 
-    public void RegisterOnDisconnect(Func<bool, Task> callback)
+    public void RegisterOnDisconnect(Func<Task> callback)
     {
         disconnectEvent += callback;
     }
@@ -86,7 +86,7 @@ public sealed class TcpConnection : IDisposable
                 }
                 else
                 {
-                    await (disconnectEvent?.Invoke(isConnected) ?? Task.CompletedTask);
+                    await (disconnectEvent?.Invoke() ?? Task.CompletedTask);
                 }
                 lastConnectionStatus = isConnected;
             }
