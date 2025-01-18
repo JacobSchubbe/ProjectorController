@@ -218,17 +218,34 @@ public sealed class TcpConnection : IDisposable
     {
         try
         {
-            while (!socket.Connected)
+            while (true)
             {
-                var heartbeatMessage = Encoding.ASCII.GetBytes("PING\r");
-                socket.Send(heartbeatMessage);
-                logger.LogDebug("Sent heartbeat to keep connection alive.");
-                await Task.Delay(TimeSpan.FromSeconds(10), CancellationToken.None);
+                try
+                {
+                    if (socket.Connected)
+                    {
+                        var heartbeatMessage = Encoding.ASCII.GetBytes("PING\r");
+                        socket.Send(heartbeatMessage);
+                        logger.LogDebug("Sent heartbeat to keep connection alive.");
+                    }
+                    else
+                    {
+                        logger.LogWarning("Socket is not connected. Attempting to reconnect...");
+                        await CreateNewSocket(host, port);
+                    }
+                }
+                catch (SocketException ex)
+                {
+                    logger.LogError($"Socket exception in heartbeat: {ex.Message}. Reinitializing socket...");
+                    await CreateNewSocket(host, port);
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(10));
             }
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            logger.LogError($"Error while sending heartbeat: {ex.Message}");
+            logger.LogError($"Error in heartbeat sender: {e.Message}");
         }
     }
     
