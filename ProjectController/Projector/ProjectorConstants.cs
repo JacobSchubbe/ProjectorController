@@ -161,6 +161,7 @@ public static class ProjectorConstants
         CoolDown = 3,
         StandbyNetworkOn = 4,
         AbnormalityStandby = 5,
+        Unknown = 6
     }
     // public static byte[] PowerStatusToBytes(PowerStatus status) => Encoding.ASCII.GetBytes(PowerStatusToString(status));
     // private static string PowerStatusToString(PowerStatus status) => $"PWR=0{(int)status}\r:";

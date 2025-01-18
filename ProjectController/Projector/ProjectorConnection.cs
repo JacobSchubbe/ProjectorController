@@ -10,57 +10,80 @@ public class ProjectorConnection
     private readonly ILogger<ProjectorConnection> logger;
     private readonly IHubContext<GUIHub> hub;
     private readonly TcpConnection tcpConnection;
-    private readonly TaskRunner<ProjectorCommands> taskRunner;
+    private readonly CommandRunner<ProjectorCommands> commandRunner;
     
     public ProjectorConnection(ILogger<ProjectorConnection> logger, 
         IHubContext<GUIHub> hub, 
         TcpConnection tcpConnection,
-        TaskRunner<ProjectorCommands> queueRunner)
+        CommandRunner<ProjectorCommands> commandRunner)
     {
         this.logger = logger;
         this.hub = hub;
         this.tcpConnection = tcpConnection;
-        this.taskRunner = queueRunner;
-        tcpConnection.RegisterOnDisconnect(SendIsConnectedToProjector);
+        this.commandRunner = commandRunner;
+        tcpConnection.RegisterOnDisconnect(OnDisconnected);
         tcpConnection.RegisterOnConnect(OnConnected);
-        taskRunner.PreCommandEvent += async cancellationToken => await this.tcpConnection.CheckConnection(cancellationToken);
+        commandRunner.PreCommandEvent += async cancellationToken =>
+        {
+            await this.tcpConnection.CheckConnection(cancellationToken);
+            this.tcpConnection.ClearBuffer();
+        };
         Start().Wait();
     }
 
     private async Task Start()
     {
         await tcpConnection.Start(ProjectorHost, ProjectorPort);
-        await taskRunner.Start(SendCommand);
+        await commandRunner.Start(SendCommand);
     }
 
     private async Task OnConnected()
     {
-        await SendCommand(ProjectorCommands.SystemControlStartCommunication);
-    }
-
-    public async Task SendIsConnectedToProjector(bool isConnected)
-    {
-        logger.LogInformation($"Sending IsConnectedToProjector: {isConnected}");
-        await hub.Clients.All.SendAsync("IsConnectedToProjector", isConnected);
+        logger.LogInformation("Connected to projector.");
+        await SendIsConnectedToProjector();
+        await EnqueueCommand(ProjectorCommands.SystemControlStartCommunication);
+        await EnqueueQuery(ProjectorCommands.SystemControlPowerQuery);
     }
     
-    public bool IsConnected => tcpConnection.IsConnected;
+    private async Task OnDisconnected()
+    {
+        logger.LogInformation("Disconnected from projector.");
+        await SendIsConnectedToProjector();
+    }
+
+    public async Task SendIsConnectedToProjector()
+    {
+        logger.LogInformation($"Sending IsConnectedToProjector: {IsConnected}");
+        await hub.Clients.All.SendAsync("IsConnectedToProjector", IsConnected);
+    }
+
+    private bool IsConnected => tcpConnection.IsConnected;
 
     public async Task EnqueueCommand(ProjectorCommands command)
     {
-        await taskRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, async (commandType, response) =>
+        {
+            await UpdateAllClients(commandType);
+            await SendCommandResponseToClients(commandType, response);
+        });
     }
     
     public async Task EnqueueQuery(ProjectorCommands command)
     {
-        await taskRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
+        if (command == ProjectorCommands.SystemControlPowerQuery)
+        {
+            logger.LogInformation("Sending query response for SystemControlPowerQuery: \"PWR=06:\"");
+            await SendQueryResponseToClients(command, "PWR=06\r:");
+        }
+        
+        await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
     }
     
-    private Task<string> SendCommand(ProjectorCommands command)
+    private async Task<string> SendCommand(ProjectorCommands command)
     {
         var commandStr = command != ProjectorCommands.SystemControlStartCommunication ? 
             $"{ProjectorCommandsDictionary[command]}\r" : $"{ProjectorCommandsDictionary[command]}";
-        return Task.FromResult(tcpConnection.SendCommand(commandStr));
+        return await tcpConnection.SendCommand(commandStr);
     }
     
     private async Task SendCommandResponseToClients(ProjectorCommands commandType, string response)
@@ -68,7 +91,7 @@ public class ProjectorConnection
         if (response == SuccessfulCommandResponse)
             response = $"Success! {response}";
         
-        logger.LogInformation($"Sending command response: {response}");
+        logger.LogInformation($"Sending command response: {response.Replace("\r", "\\r")}");
         await hub.Clients.All.SendAsync("ReceiveMessage", new
         {
             message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
@@ -77,7 +100,7 @@ public class ProjectorConnection
 
     private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
     {
-        logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
+        logger.LogInformation($"Sending query response. Raw response: {rawResponse.Replace("\r", "\\r")}");
         var status = StringToPowerStatus(rawResponse);
         if (status == null)
         {
@@ -97,18 +120,34 @@ public class ProjectorConnection
 
             logger.LogInformation(
                 $"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
-            await hub.Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
-            {
-                queryType, currentStatus
-            });
+            await SendQueryResponse(queryType, currentStatus);
         }
         else
         {
             logger.LogInformation($"Sending current status {status.ToString()} for query {queryType.ToString()}");
-            await hub.Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
-            {
-                queryType, currentStatus = status
-            });
+            await SendQueryResponse(queryType, status);
         }
+    }
+
+    private async Task UpdateAllClients(ProjectorCommands commandType)
+    {
+        switch (commandType)
+        {
+            case ProjectorCommands.SystemControlSourceHDMI1:
+            case ProjectorCommands.SystemControlSourceHDMI2:
+            case ProjectorCommands.SystemControlSourceHDMI3:
+            case ProjectorCommands.SystemControlSourceHDMILAN:
+                logger.LogDebug($"Sending updated source to all clients: {commandType.ToString()}.");
+                await SendQueryResponse(ProjectorCommands.SystemControlSourceQuery, commandType);
+                break;
+        }
+    }
+
+    private async Task SendQueryResponse<T>(ProjectorCommands queryType, T status)
+    {
+        await hub.Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
+        {
+            queryType, currentStatus = status
+        });
     }
 }

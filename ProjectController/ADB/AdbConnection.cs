@@ -9,31 +9,73 @@ public class AdbConnection
     private readonly ILogger<ProjectorConnection> logger;
     private readonly IHubContext<GUIHub> hub;
     private readonly AndroidTVController androidTvController;
-    private readonly TaskRunner<KeyCodes> taskRunner;
-
-    public AdbConnection(ILogger<ProjectorConnection> logger, IHubContext<GUIHub> hub, AndroidTVController androidTvController, TaskRunner<KeyCodes> taskRunner)
+    private readonly CommandRunner<KeyCodes> commandRunner;
+    private string ip => androidTvController.Ip;
+    public AdbConnection(ILogger<ProjectorConnection> logger, IHubContext<GUIHub> hub, AndroidTVController androidTvController, CommandRunner<KeyCodes> commandRunner)
     {
         this.logger = logger;
         this.hub = hub;
         this.androidTvController = androidTvController;
-        this.taskRunner = taskRunner;
-        Start().Wait();
+        this.commandRunner = commandRunner;
+        _ = Start();
     }
 
     private async Task Start()
     {
-        await taskRunner.Start(SendCommand);
-        // androidTvController.Connect();
+        androidTvController.AdbClient.RegisterOnDisconnect(OnDisconnected);
+        androidTvController.AdbClient.RegisterOnConnect(OnConnected);
+        await commandRunner.Start(SendCommand);
+        await androidTvController.Connect(CancellationToken.None);
+    }
+    
+    private async Task OnConnected(string updatedIp)
+    {
+        if (ip != updatedIp)
+            return;
+        logger.LogInformation("Connected to AndroidTV.");
+        await SendIsConnectedToProjector(true);
+    }
+    
+    private async Task OnDisconnected(string updatedIp)
+    {
+        if (ip != updatedIp)
+            return;
+        logger.LogInformation("Disconnected from AndroidTV.");
+        await SendIsConnectedToProjector(false);
+    }
+    
+    public bool IsConnected => androidTvController.IsConnected();
+
+    public async Task SendIsConnectedToProjector(bool isConnected)
+    {
+        logger.LogInformation($"Sending IsConnectedToAndroidTVQuery: {isConnected}");
+        await hub.Clients.All.SendAsync("IsConnectedToAndroidTVQuery", isConnected);
     }
 
     public async Task EnqueueCommand(KeyCodes command)
     {
-        await taskRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+    }
+    
+    public Task EnqueueOpenAppCommand(KeyCodes command)
+    {
+        var app = (command) switch
+        {
+            KeyCodes.Netflix => AndroidTVApps.Netflix,
+            KeyCodes.Youtube => AndroidTVApps.YouTube,
+            KeyCodes.AmazonPrime => AndroidTVApps.AmazonPrime, 
+            KeyCodes.DisneyPlus => AndroidTVApps.DisneyPlus, 
+            _ => throw new NotImplementedException()
+        };
+        
+        androidTvController.OpenApp(app);
+        // await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        return Task.CompletedTask;
     }
     
     public async Task EnqueueQuery(KeyCodes command)
     {
-        await taskRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
     }
 
     private Task SendCommandResponseToClients(KeyCodes commandType, string response)
@@ -60,8 +102,18 @@ public class AdbConnection
     {
         if (!androidTvController.IsConnected())
         {
-            if (!androidTvController.Connect())
-                return "Failed to connect to device.";
+            var timeout = 3;
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout));
+            try
+            {
+                await androidTvController.Connect(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return $"Failed to connect to device after {timeout} seconds.";
+            }
+            
+            await SendIsConnectedToProjector(IsConnected);
         }
 
         try

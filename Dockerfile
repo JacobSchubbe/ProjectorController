@@ -11,6 +11,12 @@ RUN dotnet publish "ProjectController.csproj" -c $BUILD_CONFIGURATION -o /app/pu
 
 FROM --platform=$TARGETPLATFORM node:18-alpine AS frontend-builder
 WORKDIR /signalr-vue-app
+
+RUN apk add --no-cache --update \
+    android-tools \
+    bash \
+    && rm -rf /var/cache/apk/*
+
 COPY ./signalr-vue-app/package*.json ./
 ARG VUE_APP_API_URL
 ARG VUE_APP_PORT
@@ -21,14 +27,17 @@ COPY ./signalr-vue-app ./
 RUN npm run build
 
 FROM --platform=$TARGETPLATFORM mcr.microsoft.com/dotnet/aspnet:6.0-alpine AS final
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    android-tools-adb && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache \
+    nginx \
+    icu-libs \
+    android-tools \
+    bash
+
 WORKDIR /app
 COPY --from=build /app/publish /app/
-RUN apk add --no-cache nginx icu-libs
+
 COPY nginx/nginx.conf /etc/nginx/http.d/default.conf
+
 COPY --from=frontend-builder /signalr-vue-app/dist /usr/share/nginx/html
 
 EXPOSE 80 19521 5037 5555

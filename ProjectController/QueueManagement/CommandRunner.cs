@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Connections;
+
 namespace ProjectController.QueueManagement;
 
-public class TaskRunner<TCommands> where TCommands : Enum
+public class CommandRunner<TCommands> where TCommands : Enum
 {
-    private readonly ILogger<TaskRunner<TCommands>> logger;
+    private readonly ILogger<CommandRunner<TCommands>> logger;
     private readonly Queue<(TCommands command, Func<TCommands, string, Task> callback)> commandQueue = new();
 
     private CancellationTokenSource? runningCancellationTokenSource;
@@ -11,7 +13,7 @@ public class TaskRunner<TCommands> where TCommands : Enum
     private readonly SemaphoreSlim queueAccessSemaphore = new(1, 1);
     public event Func<CancellationToken, Task>? PreCommandEvent;
 
-    public TaskRunner(ILogger<TaskRunner<TCommands>> logger)
+    public CommandRunner(ILogger<CommandRunner<TCommands>> logger)
     {
         this.logger = logger;
     }
@@ -50,6 +52,8 @@ public class TaskRunner<TCommands> where TCommands : Enum
         {
             while (!token.IsCancellationRequested)
             {
+                token.ThrowIfCancellationRequested();
+                
                 if (commandQueue.Count == 0)
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(500), token);
@@ -58,6 +62,7 @@ public class TaskRunner<TCommands> where TCommands : Enum
                 
                 try
                 {
+                    await (PreCommandEvent?.Invoke(token) ?? Task.CompletedTask);
                     logger.LogDebug("Try to access queue...");
                     await queueAccessSemaphore.WaitAsync(token);
                     logger.LogDebug("Accessed queue...");
@@ -77,14 +82,13 @@ public class TaskRunner<TCommands> where TCommands : Enum
 
                     if (dequeued)
                     {
-                        await (PreCommandEvent?.Invoke(token) ?? Task.CompletedTask);
                         var response = sendCommand != null ? await sendCommand.Invoke(commandKvp.command) : string.Empty;
                         await commandKvp.callback(commandKvp.command, response);
                     }
                 }
                 catch (Exception e)
                 {
-                    logger.LogError($"Exception while trying to send a command: {e.Message}");
+                    logger.LogError("Exception while trying to send a command. Type: {type}, Message: {message}", e.GetType().FullName, e.Message);
                 }
             
                 await Task.Delay(TimeSpan.FromMilliseconds(100), token);
@@ -92,7 +96,7 @@ public class TaskRunner<TCommands> where TCommands : Enum
         }
         catch (OperationCanceledException)
         {
-            logger.LogDebug("Canceled all commands.");
+            await ClearQueue(token);
         }
         catch (Exception e)
         {
@@ -107,8 +111,15 @@ public class TaskRunner<TCommands> where TCommands : Enum
             await queueAccessSemaphore.WaitAsync();
             try
             {
-                commandQueue.Enqueue((command, callback));
-                logger.LogInformation($"Command enqueued: {command}");
+                if (commandQueue.ToList().All(x => !x.command.Equals(command)))
+                {
+                    commandQueue.Enqueue((command, callback));
+                    logger.LogInformation($"Command enqueued: {command}");
+                }
+                else
+                {
+                    logger.LogTrace($"Command already in queue: {command}");
+                }
             }
             finally
             {
@@ -117,4 +128,17 @@ public class TaskRunner<TCommands> where TCommands : Enum
         }
     }
 
+    private async Task ClearQueue(CancellationToken token)
+    {
+        await queueAccessSemaphore.WaitAsync(token);
+        try
+        {
+            commandQueue.Clear();
+        }
+        finally
+        {
+            queueAccessSemaphore.Release();
+        }
+        logger.LogDebug("Canceled all commands.");
+    }
 }

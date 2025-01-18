@@ -13,8 +13,8 @@ export type QueryResponse = {
     currentStatus: number;
 };
 
-type OnMessageReceived = (message: Message) => void;
 type IsConnectedToProjectorCallback = (isConnected: boolean) => void;
+type IsConnectedToAndroidTVCallback = (isConnected: boolean) => void;
 type OnQueryResponseReceived = (response: QueryResponse) => void;
 type ConnectionStatusUpdater = (isConnected: boolean) => void;
 
@@ -26,8 +26,11 @@ const SIGNALR_URL = `http://${DEFAULT_API_URL}:19521/GUIHub`;
 // SignalR Manager Class -------------------------------------------------
 class SignalRService {
     private connection: signalR.HubConnection;
+    private pingInterval: number | undefined; // Ping interval ID
+
     private isConnectedToProjectorCallback?: IsConnectedToProjectorCallback;
-    private onQueryResponseReceivedCallback?: OnQueryResponseReceived;
+    private isConnectedToAndroidTVCallback?: IsConnectedToAndroidTVCallback;
+    private onProjectorQueryResponseReceivedCallback?: OnQueryResponseReceived;
     private connectionStatusUpdater?: ConnectionStatusUpdater;
 
     constructor() {
@@ -35,30 +38,64 @@ class SignalRService {
             .withUrl(SIGNALR_URL)
             .build();
     }
+    
+    isConnected(): boolean {
+        return !this.connection || this.connection.state === HubConnectionState.Connected;
+    }
 
     // Initialize the SignalR connection and listeners
     async initialize(
-        isConnectedToProjector: IsConnectedToProjectorCallback,
-        onQueryResponseReceived: OnQueryResponseReceived,
+        isConnectedToProjectorCallback: IsConnectedToProjectorCallback,
+        isConnectedToAndroidTVCallback: IsConnectedToAndroidTVCallback,
+        onProjectorQueryResponseReceivedCallback: OnQueryResponseReceived,
         connectionStatusUpdater: ConnectionStatusUpdater) 
     {
         console.log('Setting up SignalR Service...');
 
-        this.isConnectedToProjectorCallback = isConnectedToProjector;
-        this.onQueryResponseReceivedCallback = onQueryResponseReceived;
+        this.isConnectedToProjectorCallback = isConnectedToProjectorCallback;
+        this.isConnectedToAndroidTVCallback = isConnectedToAndroidTVCallback;
+        this.onProjectorQueryResponseReceivedCallback = onProjectorQueryResponseReceivedCallback;
         this.connectionStatusUpdater = connectionStatusUpdater;
 
         // Register listeners
-        this.connection.on('IsConnectedToProjector', this.handleConnectionStatus);
-        this.connection.on('ReceiveProjectorQueryResponse', this.handleQueryResponse);
+        this.connection.on('ReceivedPing', this.handlePing);
+        this.connection.on('IsConnectedToProjector', this.handleProjectorConnectionStatus);
+        this.connection.on('IsConnectedToAndroidTVQuery', this.handleAndroidTVConnectionStatus);
+        this.connection.on('ReceiveProjectorQueryResponse', this.handleProjectorQueryResponse);
 
         this.connection.onclose(async () => {
             console.log('SignalR connection closed. Attempting to reconnect...');
             this.connectionStatusUpdater?.(false);
+            if (this.pingInterval) {
+                clearInterval(this.pingInterval); // Stop the ping interval if connection is lost
+                this.pingInterval = undefined;
+            }
             await this.retryConnection();
         });
 
+        document.addEventListener("visibilitychange", async () => {
+            if (document.visibilityState === "visible" && this.connection.state !== HubConnectionState.Connected) {
+                console.log("Browser became visible. Reconnecting SignalR...");
+                await this.retryConnection(); // Reconnect if not already connected
+            }
+        });
+
         await this.retryConnection(); // Start connection
+    }
+
+    private startPing(): void {
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+        }
+
+        this.pingInterval = window.setInterval(() => {
+            if (this.connection.state === HubConnectionState.Connected) {
+                // console.log("Sending ping to keep the SignalR connection alive...");
+                this.connection.send("Ping").catch(err => {
+                    console.error("Error while sending ping:", err);
+                });
+            }
+        }, 25000);
     }
 
     // Teardown the current connection
@@ -67,13 +104,28 @@ class SignalRService {
             await this.connection.stop();
             console.log('SignalR connection stopped');
         }
+
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = undefined;
+        }
     }
 
     // Query for initial statuses after connection
-    queryForInitialBackendStatuses(): void {
+    queryForInitialConnectionStatuses(): void {
         this.getIsConnectedToProjector();
-        this.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery);
+        this.getIsConnectedToAndroidTV();
     }
+
+    queryForInitialProjectorStatuses = () => {
+        this.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlSourceQuery);
+    }
+
+    queryForInitialAndroidTVStatuses = () => {
+        // this.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlSourceQuery);
+    }
+
+
 
     // Restart SignalR connection in case of failure
     private async retryConnection(): Promise<void> {
@@ -83,13 +135,14 @@ class SignalRService {
                 await this.connection.start();
                 console.log('SignalR connected');
                 this.connectionStatusUpdater?.(true);
-                this.queryForInitialBackendStatuses();
+                this.queryForInitialConnectionStatuses();
+                this.startPing(); // Start pings after successfully connecting to the server
             } catch (err) {
                 this.logConnectionError(err);
                 await this.sleep(RETRY_INTERVAL_MS);
             }
         }
-    }
+    } 
 
     // Utility: Sleep for retry interval
     private sleep(ms: number): Promise<void> {
@@ -97,20 +150,34 @@ class SignalRService {
     }
 
     // Event handlers
-    private handleConnectionStatus = (isConnected: boolean): void => {
+    private handlePing = (): void => {
+        // console.log(`Received reply from server for ping.`);
+    };
+    
+    private handleProjectorConnectionStatus = (isConnected: boolean): void => {
         console.log(`Projector connected status: ${isConnected}`);
         this.isConnectedToProjectorCallback?.(isConnected);
     };
 
-    private handleQueryResponse = (response: QueryResponse): void => {
-        console.log(`Query response received: ${JSON.stringify(response)}`);
-        this.onQueryResponseReceivedCallback?.(response);
+    private handleAndroidTVConnectionStatus = (isConnected: boolean): void => {
+        console.log(`AndroidTV connected status: ${isConnected}`);
+        this.isConnectedToAndroidTVCallback?.(isConnected);
+    };
+
+    private handleProjectorQueryResponse = (response: QueryResponse): void => {
+        console.log(`Projector query response received: ${JSON.stringify(response)}`);
+        this.onProjectorQueryResponseReceivedCallback?.(response);
     };
 
     // Command functions
     getIsConnectedToProjector(): void {
         console.log('Querying connection status to projector...');
         this.invoke('IsConnectedToProjectorQuery');
+    }
+    
+    getIsConnectedToAndroidTV(): void {
+        console.log('Querying connection status to AndroidTV...');
+        this.invoke('IsConnectedToAndroidTVQuery');
     }
 
     sendProjectorCommand(command: projectorConstants.ProjectorCommands): void {
@@ -124,19 +191,20 @@ class SignalRService {
     }
     
     sendAndroidCommand(command: adbConstants.KeyCodes): void {
-        console.log(`Sending projector command: ${command}`);
+        console.log(`Sending AndroidTV command: ${command}`);
         this.invoke('ReceiveAndroidCommand', command);
     }
 
+    sendAndroidOpenAppCommand(command: adbConstants.KeyCodes): void {
+        console.log(`Sending AndroidTV open app command: ${command}`);
+        this.invoke('ReceiveAndroidOpenAppCommand', command);
+    }
+
     sendAndroidQuery(command: adbConstants.KeyCodes): void {
-        console.log(`Sending projector query: ${command}`);
+        console.log(`Sending AndroidTV query: ${command}`);
         this.invoke('ReceiveAndroidQuery', command);
     }
-
-    queryForInitialProjectorStatuses = () => {
-        this.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlSourceQuery);
-    }
-
+    
     // Helper to send SignalR invocations
     private invoke(methodName: string, ...args: any[]): void {
         if (this.connection.state === HubConnectionState.Connected) {
