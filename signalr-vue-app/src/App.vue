@@ -81,7 +81,7 @@
 <script lang="ts">
 import { reactive, onMounted, computed, onUnmounted } from "vue";
 import { SignalRInstance } from "./SignalRServiceManager";
-import * as signalr from "./SignalRServiceManager";
+// import * as signalr from "./SignalRServiceManager";
 import * as projectorConstants from "./Constants/ProjectorConstants";
 import * as adbConstants from "./Constants/AdbConstants";
 
@@ -116,48 +116,56 @@ export default {
 
     onMounted(async () => {
       await SignalRInstance.initialize(
-          (isConnected: boolean) => { handleProjectorConnectionStateChange(isConnected); },
-          (isConnected: boolean) => { handleAndroidTVConnectionStateChange(isConnected); },
-          (response:signalr.QueryResponse) => { handleQueryResponse(response.queryType, response.currentStatus); },
-          (connectionStatus:boolean) => { handleGUIConnectionStateChange(connectionStatus); }
+          (isConnected) => { handleProjectorConnectionStateChange(isConnected); },
+          (isConnected) => { handleAndroidTVConnectionStateChange(isConnected); },
+          (response) => { handleProjectorQueryResponse(response.queryType, response.currentStatus); },
+          (connectionStatus) => { handleGUIConnectionStateChange(connectionStatus); }
       );
     });
     
     const handleProjectorConnectionStateChange = async (isConnected: boolean) => {
       state.ProjectorConnected = isConnected;
       if (state.ProjectorConnected) {
-        SignalRInstance.queryForInitialProjectorStatuses();
+        SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
       }
       else
       {
         state.selectedInput = -1;
         state.ProjectorPoweredOn = false;
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        SignalRInstance.queryForInitialBackendStatuses();
+        SignalRInstance.getIsConnectedToProjector();
       }
     }
     
     const handleAndroidTVConnectionStateChange = async (isConnected: boolean) => {
-      state.AndroidTVConnected = isConnected;
-      if (state.AndroidTVConnected) {
-        SignalRInstance.queryForInitialProjectorStatuses();
-      }
-      else
+      if (state.AndroidTVConnected != isConnected)
       {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        SignalRInstance.queryForInitialBackendStatuses();
+        state.AndroidTVConnected = isConnected;
+        if (state.AndroidTVConnected) {
+          SignalRInstance.getIsConnectedToAndroidTV();
+        }
+        else
+        {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          SignalRInstance.queryForInitialAndroidTVStatuses();
+        }
       }
     }
     
-    const handleQueryResponse = (queryType:Number, currentStatus:Number) => {
+    const handleProjectorQueryResponse = (queryType:Number, currentStatus:Number) => {
       switch (queryType) {
         case projectorConstants.ProjectorCommands.SystemControlSourceQuery:
+          console.log(`Projector Source query response: ${currentStatus}`);
           state.selectedInput = currentStatus as projectorConstants.ProjectorCommands;
           break;
         case projectorConstants.ProjectorCommands.SystemControlPowerQuery:
+          console.log(`Projector Power query response: ${currentStatus}`);
           var powerStatus = currentStatus as projectorConstants.PowerStatus;
           var isPoweredOn = powerStatus === projectorConstants.PowerStatus.Warmup || powerStatus == projectorConstants.PowerStatus.LampOn;
           state.ProjectorPoweredOn = isPoweredOn;
+          if (state.ProjectorPoweredOn){
+            SignalRInstance.queryForInitialProjectorStatuses();
+          }
           break;
         default:
           console.error("Invalid input selected");
@@ -190,7 +198,7 @@ export default {
 
       switch (command) {
         case projectorConstants.ProjectorCommands.SystemControlPowerOff:
-          while (state.ProjectorConnected) {
+          while (state.ProjectorPoweredOn) {
             console.log("Waiting for power off...");
             SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -198,7 +206,7 @@ export default {
           console.log("Power off complete");
           break;
         case projectorConstants.ProjectorCommands.SystemControlPowerOn:
-          while (!state.ProjectorConnected) {
+          while (!state.ProjectorPoweredOn) {
             console.log("Waiting for power on...");
             SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -221,12 +229,12 @@ export default {
         SignalRInstance.initialize(
             (isConnected) => handleProjectorConnectionStateChange(isConnected),
             (isConnected) => handleAndroidTVConnectionStateChange(isConnected),
-            (response) => handleQueryResponse(response.queryType, response.currentStatus),
+            (response) => handleProjectorQueryResponse(response.queryType, response.currentStatus),
             (connectionStatus) => handleGUIConnectionStateChange(connectionStatus)
         );
       } else {
         console.log("Tab regained focus. Querying initial backend statuses...");
-        SignalRInstance.queryForInitialBackendStatuses();
+        SignalRInstance.queryForInitialConnectionStatuses();
       }
     };
 

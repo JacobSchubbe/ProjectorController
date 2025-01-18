@@ -12,7 +12,7 @@ public class AndroidTVController
     {
         this.logger = logger;
         _adbClient = new ADBClient(Log, verbose, showCommand);
-        Connect();
+        Connect(false);
     }
 
     private void Log(string message)
@@ -20,10 +20,10 @@ public class AndroidTVController
         logger.LogDebug(message);
     }
     
-    public bool Connect()
+    public bool Connect(bool blocking = true)
     {
         Log($"Connecting to {_ip}...");
-        var result = _adbClient.Connect(_ip);
+        var result = _adbClient.Connect(_ip, blocking);
         if (result)
         {
             Log($"Connected successfully to {_ip}.");

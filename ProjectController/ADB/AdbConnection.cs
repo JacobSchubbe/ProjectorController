@@ -84,6 +84,8 @@ public class AdbConnection
         {
             if (!androidTvController.Connect())
                 return "Failed to connect to device.";
+            
+            await SendIsConnectedToProjector(IsConnected);
         }
 
         try

@@ -23,7 +23,11 @@ public class ProjectorConnection
         this.taskRunner = queueRunner;
         tcpConnection.RegisterOnDisconnect(SendIsConnectedToProjector);
         tcpConnection.RegisterOnConnect(OnConnected);
-        taskRunner.PreCommandEvent += async cancellationToken => await this.tcpConnection.CheckConnection(cancellationToken);
+        taskRunner.PreCommandEvent += async cancellationToken =>
+        {
+            await this.tcpConnection.CheckConnection(cancellationToken);
+            this.tcpConnection.ClearBuffer();
+        };
         Start().Wait();
     }
 
@@ -35,7 +39,9 @@ public class ProjectorConnection
 
     private async Task OnConnected()
     {
-        await SendCommand(ProjectorCommands.SystemControlStartCommunication);
+        logger.LogInformation("Connected to projector.");
+        await taskRunner.EnqueueCommand(new[] { ProjectorCommands.SystemControlStartCommunication }, SendCommandResponseToClients);
+        await taskRunner.EnqueueCommand(new[] { ProjectorCommands.SystemControlPowerQuery }, SendCommandResponseToClients);
     }
 
     public async Task SendIsConnectedToProjector(bool isConnected)

@@ -81,6 +81,7 @@ public sealed class TcpConnection : IDisposable
             {
                 if (isConnected)
                 {
+                    ClearBuffer();
                     await (connectEvent?.Invoke() ?? Task.CompletedTask);
                 }
                 else
@@ -115,9 +116,40 @@ public sealed class TcpConnection : IDisposable
         }
     }
 
-    private void ClearBuffer()
+    public void ClearBuffer()
     {
-        socket?.Receive(buffer);
+        try
+        {
+            // Ensure the socket is available and connected
+            if (!socket.Connected) 
+                return;
+
+            // Temporarily set the socket to non-blocking to avoid indefinite blocking
+            socket.Blocking = false;
+
+            // Loop to read all available data
+            while (true)
+            {
+                int bytesRead = socket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
+
+                // If no data is read, we assume the buffer is cleared
+                if (bytesRead == 0)
+                    break;
+            }
+        }
+        catch (SocketException ex)
+        {
+            // Error code 10035 (WSAEWOULDBLOCK) means there is no data available.
+            if (ex.SocketErrorCode != SocketError.WouldBlock)
+            {
+                throw; // Re-throw other exceptions
+            }
+        }
+        finally
+        {
+            // Restore the socket to blocking state
+            socket.Blocking = true;
+        }
     }
     
     public string SendCommand(string commandStr)

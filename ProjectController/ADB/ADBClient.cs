@@ -185,23 +185,32 @@ public class ADBClient
         _selectedDevice = null;
     }
 
-    public bool Connect(string ip)
+    public bool Connect(string ip, bool blocking = true)
     {
         Log($"Connecting to {ip}...");
-        ExecuteCommand($"disconnect {ip}", includeSelectedSerial: false);
-        string result = ExecuteCommand($"connect {ip}", includeSelectedSerial: false);
-        if (result.Contains("connected"))
+        try
         {
-            GetDevices();
-            _selectedDevice = _devices[_devices.Count - 1];
-            Log($"Device {_selectedDevice} connected successfully.");
-            return true;
+            ExecuteCommand($"disconnect {ip}", blocking:blocking, includeSelectedSerial: false);
+            string result = ExecuteCommand($"connect {ip}", blocking:blocking, includeSelectedSerial: false);
+            if (result.Contains("connected"))
+            {
+                GetDevices();
+                _selectedDevice = _devices[_devices.Count - 1];
+                Log($"Device {_selectedDevice} connected successfully.");
+                return true;
+            }
+            else
+            {
+                Log($"Failed to connect to {ip}.");
+                return false;
+            }
         }
-        else
+        catch (Exception e)
         {
-            Log($"Failed to connect to {ip}.");
-            return false;
+            Log($"Error connecting to {ip}: {e.Message}");
         }
+
+        return false;
     }
 
     public bool IsConnected(string ip)
