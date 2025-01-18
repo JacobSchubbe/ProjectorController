@@ -56,7 +56,7 @@ public sealed class TcpConnection : IDisposable
         {
             try
             {
-                await CheckConnectionChange();
+                await CheckConnectionChange(cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -71,9 +71,9 @@ public sealed class TcpConnection : IDisposable
         }
     }
 
-    private async Task CheckConnectionChange()
+    private async Task CheckConnectionChange(CancellationToken cancellationToken)
     {
-        await connectionChangeCheckSemaphore.WaitAsync();
+        await connectionChangeCheckSemaphore.WaitAsync(cancellationToken);
         try
         {
             var isConnected = socket is { Connected: true };
@@ -107,7 +107,7 @@ public sealed class TcpConnection : IDisposable
             
             logger.LogInformation($"Connecting to {host}:{port}...");
             await socket.ConnectAsync(host, port, cancellationToken);
-            await CheckConnectionChange();
+            await CheckConnectionChange(cancellationToken);
             logger.LogInformation($"Connected to {host}:{port}."); 
         }
         finally

@@ -155,7 +155,7 @@ public class ADBClient
         {
             try
             {
-                await CheckConnectionChange(ip);
+                await CheckConnectionChange(ip, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -170,9 +170,9 @@ public class ADBClient
         }
     }
 
-    private async Task CheckConnectionChange(string ip)
+    private async Task CheckConnectionChange(string ip, CancellationToken cancellationToken)
     {
-        await connectionChangeCheckSemaphore.WaitAsync();
+        await connectionChangeCheckSemaphore.WaitAsync(cancellationToken);
         try
         {
             var isConnected = IsConnected(ip);
@@ -197,67 +197,21 @@ public class ADBClient
     
     private void Log(string message)
     {
-        if (_verbose)
-        {
-            Console.WriteLine(message);
-        }
+        Console.WriteLine(message);
     }
-
-    // public bool StartServer()
-    // {
-    //     Log("Starting ADB server...");
-    //     _serverProcess = ExecuteCommand("start-server", blocking: true, includeSelectedSerial: false);
-    //     // Thread.Sleep(5000); // Give time for the server to start.
-    //
-    //     if (_serverProcess != null)
-    //     {
-    //         Log("ADB server started successfully.");
-    //         return true;
-    //     }
-    //     else
-    //     {
-    //         Log("Failed to start ADB server.");
-    //         return false;
-    //     }
-    // }
-    //
-    // public bool KillServer()
-    // {
-    //     Log("Stopping ADB server...");
-    //     ExecuteCommand("kill-server", includeSelectedSerial: false);
-    //
-    //     if (_serverProcess != null)
-    //     {
-    //         _serverProcess.Kill();
-    //         _serverProcess = null;
-    //         Clean();
-    //         Log("ADB server stopped successfully.");
-    //         return true;
-    //     }
-    //
-    //     Log("No running ADB server process found.");
-    //     return false;
-    // }
-    //
-    // private void Clean()
-    // {
-    //     Log("Cleaning state...");
-    //     _devices.Clear();
-    //     _selectedDevice = null;
-    // }
-
+    
     public async Task<bool> Connect(string ip, CancellationToken cancellationToken = default)
     {
         await connectionChangeCheckSemaphore.WaitAsync(cancellationToken);
         try
         {
             Log($"Connecting to {ip}...");
+            var reconnectionTime = 5;
             while (!IsConnected(ip) && !cancellationToken.IsCancellationRequested)
             {
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(reconnectionTime), cancellationToken);
                 try
                 {
-                    // ExecuteCommand($"disconnect {ip}", blocking:blocking, includeSelectedSerial: false);
                     string result = ExecuteCommand($"connect {ip}", includeSelectedSerial: false);
                     if (result.Contains("connected"))
                     {
@@ -267,8 +221,8 @@ public class ADBClient
                         return true;
                     }
 
-                    Log($"Failed to connect to {ip}.");
-                    return false;
+                    Log($"Failed to connect to {ip}. Trying again in {reconnectionTime} seconds.");
+                    continue;
                 }
                 catch (Exception e)
                 {
@@ -290,10 +244,8 @@ public class ADBClient
     {
         if (_devices.Any(device => device.StartsWith(ip)))
         {
-            Log($"Device {ip} is connected.");
             return true;
         }
-        Log($"Device {ip} is not connected.");
         return false;
     }
 
