@@ -46,8 +46,6 @@ export function useProjector() {
     {
       state.selectedInput = -1;
       state.ProjectorPoweredOn = projectorConstants.PowerStatusGui.Pending;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      SignalRInstance.getIsConnectedToProjector();
     }
   }
 
@@ -57,11 +55,6 @@ export function useProjector() {
       state.AndroidTVConnected = isConnected;
       if (state.AndroidTVConnected) {
         SignalRInstance.getIsConnectedToAndroidTV();
-      }
-      else
-      {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        SignalRInstance.queryForInitialAndroidTVStatuses();
       }
     }
   }

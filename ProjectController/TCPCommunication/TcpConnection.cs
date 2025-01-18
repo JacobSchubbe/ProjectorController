@@ -27,13 +27,13 @@ public sealed class TcpConnection : IDisposable
         Task.Run(StartHeartbeatSender);
     }
 
-    public Task Start(string host, int port)
+    public async Task Start(string host, int port)
     {
-        // await CreateNewSocket(host, port);
+        await CreateNewSocket(host, port);
         this.host = host;
         this.port = port;
 
-        return Task.CompletedTask;
+        // return Task.CompletedTask;
     }
 
     private async Task CreateNewSocket(string host, int port)
