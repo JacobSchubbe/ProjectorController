@@ -54,10 +54,10 @@
       </div>
       <!-- Row 4: Volume Buttons -->
       <div class="control-row">
-        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_VOLUME_UP)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeDown)">
           Volume<br/><br/>-
         </button>
-        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_VOLUME_DOWN)">
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button" @click="handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeUp)">
           Volume<br/><br/>+
         </button>
       </div>
