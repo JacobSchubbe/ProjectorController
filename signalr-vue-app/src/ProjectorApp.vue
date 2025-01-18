@@ -1,0 +1,227 @@
+<template>
+  <div id="app">
+    <!-- Dropdown Component -->
+    <Dropdown
+        label="Select Input:"
+        v-model="state.selectedInput"
+        :options="inputOptions"
+        @change="handleDropdownChange"
+    />
+
+    <label>GUI Connected: {{ state.GUIConnected }}</label>
+
+    
+
+    <div class="projector-controls">
+      
+      <div class="control-row">
+        <ControlButton
+            :disabled="buttonDisabledPowerButton"
+            :onClick="() =>
+            handleClickProjectorCommands(
+              state.ProjectorPoweredOn ? powerOffCommand : powerOnCommand
+            )">
+          {{ powerButtonText }}
+        </ControlButton>
+
+        <ControlButton
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_UP)"
+        >
+          Up
+        </ControlButton>
+        
+        <ControlButton
+            class="control-button enter-button"
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_ENTER)"
+        >
+          Enter
+        </ControlButton>
+      </div>
+
+      <!-- Media Controls -->
+      <div class="control-row">
+        <MediaButton
+            icon="/assets/netflix-logo.png"
+            class="control-button media-button"
+            alt="Netflix"
+            :onClick="() => handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.Netflix)"
+            :disabled="buttonDisabledWhenPowerOff"
+        />
+        <MediaButton
+            icon="/assets/youtube-logo.png"
+            class="control-button media-button"
+            alt="YouTube"
+            :onClick="() => handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.Youtube)"
+            :disabled="buttonDisabledWhenPowerOff"
+        />
+      </div>
+      
+    </div>
+  </div>
+</template>
+
+<script lang="ts" setup>
+import { onMounted, onUnmounted } from "vue";
+import { SignalRInstance } from "./SignalRServiceManager";
+import * as adbConstants from "./Constants/AdbConstants";
+import Dropdown from "@/components/DropDown.vue";
+import ControlButton from "@/components/ControlButton.vue";
+import MediaButton from "@/components/MediaButton.vue";
+import { useProjector } from "@/composables/useProjector";
+import * as projectorConstants from "@/Constants/ProjectorConstants";
+
+// Use composable to manage projector state and logic
+const {
+  state,
+  powerButtonText,
+  buttonDisabledPowerButton,
+  buttonDisabledWhenPowerOff,
+  handleDropdownChange,
+  handleClickProjectorCommands,
+  handleClickAndroidCommand,
+  handleClickAndroidOpenAppCommand,
+  handleProjectorConnectionStateChange,
+  handleAndroidTVConnectionStateChange,
+  handleProjectorQueryResponse,
+  handleGUIConnectionStateChange
+} = useProjector();
+
+// Input options for the dropdown
+const inputOptions = [
+  { label: "TV/Switch", value: projectorConstants.ProjectorCommands.SystemControlSourceHDMI1 },
+  { label: "SmartTV", value: projectorConstants.ProjectorCommands.SystemControlSourceHDMI3 },
+];
+
+onMounted(async () => {
+  await SignalRInstance.initialize(
+      (isConnected) => { handleProjectorConnectionStateChange(isConnected); },
+      (isConnected) => { handleAndroidTVConnectionStateChange(isConnected); },
+      (response) => { handleProjectorQueryResponse(response.queryType, response.currentStatus); },
+      (connectionStatus) => { handleGUIConnectionStateChange(connectionStatus); }
+  );
+});
+
+onMounted(() => {
+  console.log("App mounted. Setting up tab focus listener.");
+  window.addEventListener("focus", onTabFocused);
+});
+
+onUnmounted(() => {
+  console.log("App unmounted. Removing tab focus listener.");
+  window.removeEventListener("focus", onTabFocused);
+});
+
+const onTabFocused = () => {
+  if (!SignalRInstance.isConnected()) {
+    console.log("Tab regained focus. Reconnecting SignalR...");
+    SignalRInstance.initialize(
+        (isConnected) => handleProjectorConnectionStateChange(isConnected),
+        (isConnected) => handleAndroidTVConnectionStateChange(isConnected),
+        (response) => handleProjectorQueryResponse(response.queryType, response.currentStatus),
+        (connectionStatus) => handleGUIConnectionStateChange(connectionStatus)
+    );
+  } else {
+    console.log("Tab regained focus. Querying initial backend statuses...");
+    SignalRInstance.queryForInitialConnectionStatuses();
+  }
+};
+
+</script>
+
+<style>
+
+button {
+  margin: 10px;
+  padding: 10px;
+}
+
+select {
+  margin: 10px;
+  padding: 5px;
+}
+
+.projector-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px; /* Spacing between rows */
+}
+
+.control-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px; /* Spacing between buttons */
+}
+
+.control-button {
+  background-color: #007bff; /* Primary button color */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  width: 80px; /* Fixed width */
+  height: 80px; /* Fixed height */
+  font-size: 14px; /* Reduce font size to prevent overflow if content is long */
+  cursor: pointer;
+  text-align: center;
+  vertical-align: middle;
+  display: flex; /* Flexbox for centering content */
+  justify-content: center; /* Horizontally center content */
+  align-items: center; /* Vertically center content */
+  transition: background-color 0.3s ease, transform 0.2s;
+  white-space: normal; /* Allow text to wrap inside the button */
+  overflow: hidden; /* Hide any overflowing content */
+  text-overflow: ellipsis; /* Add ellipsis if text overflows */
+}
+
+.control-button:disabled {
+  background-color: #ccc; /* Grey background */
+  color: #666;           /* Greyed-out text */
+  cursor: not-allowed;   /* Change cursor to indicate it's not clickable */
+  opacity: 0.6;          /* Dim the button */
+}
+
+.control-button:hover {
+  background-color: #0056b3; /* Darker shade on hover */
+}
+
+.control-button:active {
+  transform: scale(0.95); /* Button press effect */
+}
+
+.enter-button {
+  background-color: #28a745; /* Distinct color for the Enter button */
+}
+
+.enter-button:hover {
+  background-color: #1e7e34; /* Darker shade on hover for Enter button */
+}
+
+.media-button {
+  background-color: transparent; /* Make the button background fully transparent */
+  border: none; /* Remove borders for a cleaner visual */
+  padding: 0; /* Remove extra spacing around the image */
+  display: flex; /* Use flexbox for proper content alignment */
+  justify-content: center;
+  align-items: center;
+  width: 80px; /* Button should remain square */
+  height: 80px; /* Fixed button height (equal to width) */
+  cursor: pointer;
+  overflow: hidden; /* Clip any overflow from the image */
+}
+
+.media-button:disabled {
+  opacity: 0.6;
+  pointer-events: none; /* Disable pointer interactions when disabled */
+}
+
+.media-icon {
+  width: 100%; /* Ensure image completely fills the button */
+  height: 100%; /* Scale image to fill height */
+  object-fit: cover; /* Make sure image covers the entire button evenly */
+  pointer-events: none; /* Ensure clicking on the image still triggers the button */
+}
+
+
+</style>
