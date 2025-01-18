@@ -10,20 +10,20 @@ public class ProjectorConnection
     private readonly ILogger<ProjectorConnection> logger;
     private readonly IHubContext<GUIHub> hub;
     private readonly TcpConnection tcpConnection;
-    private readonly TaskRunner<ProjectorCommands> taskRunner;
+    private readonly CommandRunner<ProjectorCommands> commandRunner;
     
     public ProjectorConnection(ILogger<ProjectorConnection> logger, 
         IHubContext<GUIHub> hub, 
         TcpConnection tcpConnection,
-        TaskRunner<ProjectorCommands> queueRunner)
+        CommandRunner<ProjectorCommands> commandRunner)
     {
         this.logger = logger;
         this.hub = hub;
         this.tcpConnection = tcpConnection;
-        this.taskRunner = queueRunner;
+        this.commandRunner = commandRunner;
         tcpConnection.RegisterOnDisconnect(OnDisconnected);
         tcpConnection.RegisterOnConnect(OnConnected);
-        taskRunner.PreCommandEvent += async cancellationToken =>
+        commandRunner.PreCommandEvent += async cancellationToken =>
         {
             await this.tcpConnection.CheckConnection(cancellationToken);
             this.tcpConnection.ClearBuffer();
@@ -34,7 +34,7 @@ public class ProjectorConnection
     private async Task Start()
     {
         await tcpConnection.Start(ProjectorHost, ProjectorPort);
-        await taskRunner.Start(SendCommand);
+        await commandRunner.Start(SendCommand);
     }
 
     private async Task OnConnected()
@@ -42,7 +42,7 @@ public class ProjectorConnection
         logger.LogInformation("Connected to projector.");
         await SendIsConnectedToProjector();
         await EnqueueCommand(ProjectorCommands.SystemControlStartCommunication);
-        await EnqueueCommand(ProjectorCommands.SystemControlPowerQuery);
+        await EnqueueQuery(ProjectorCommands.SystemControlPowerQuery);
     }
     
     private async Task OnDisconnected()
@@ -61,7 +61,7 @@ public class ProjectorConnection
 
     public async Task EnqueueCommand(ProjectorCommands command)
     {
-        await taskRunner.EnqueueCommand(new[] { command }, async (commandType, response) =>
+        await commandRunner.EnqueueCommand(new[] { command }, async (commandType, response) =>
         {
             await UpdateAllClients(commandType);
             await SendCommandResponseToClients(commandType, response);
@@ -76,14 +76,14 @@ public class ProjectorConnection
             await SendQueryResponseToClients(command, "PWR=06\r:");
         }
         
-        await taskRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
     }
     
-    private Task<string> SendCommand(ProjectorCommands command)
+    private async Task<string> SendCommand(ProjectorCommands command)
     {
         var commandStr = command != ProjectorCommands.SystemControlStartCommunication ? 
             $"{ProjectorCommandsDictionary[command]}\r" : $"{ProjectorCommandsDictionary[command]}";
-        return Task.FromResult(tcpConnection.SendCommand(commandStr));
+        return await tcpConnection.SendCommand(commandStr);
     }
     
     private async Task SendCommandResponseToClients(ProjectorCommands commandType, string response)

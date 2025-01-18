@@ -67,8 +67,13 @@
         <button :disabled="buttonDisabledWhenPowerOff" class="control-button media-button" @click="handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.Youtube)">
           <img src="/assets/youtube-logo.png" alt="YouTube" class="media-icon" />
         </button>
+      </div>
+      <div class="control-row">
         <button :disabled="buttonDisabledWhenPowerOff" class="control-button media-button" @click="handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.AmazonPrimeVideo)">
           <img src="/assets/prime-video-logo.png" alt="Amazon Prime" class="media-icon" />
+        </button>
+        <button :disabled="buttonDisabledWhenPowerOff" class="control-button media-button" @click="handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.DisneyPlus)">
+          <img src="/assets/disney-logo.jpg" alt="Amazon Prime" class="media-icon" />
         </button>
       </div>
 
@@ -95,7 +100,7 @@ export default {
     });
     
     const buttonDisabledWhenPowerOff = computed(() => {
-      return !state.GUIConnected || !state.ProjectorConnected || !state.ProjectorPoweredOn || !state.AndroidTVConnected || state.ProjectorPoweredOn != projectorConstants.PowerStatusGui.On;
+      return !state.GUIConnected || !state.ProjectorConnected || !state.ProjectorPoweredOn || !state.AndroidTVConnected || state.ProjectorPoweredOn != projectorConstants.PowerStatusGui.On || state.selectedInput != projectorConstants.ProjectorCommands.SystemControlSourceHDMI3;
     })
     
     const buttonDisabledPowerButton = computed(() => {

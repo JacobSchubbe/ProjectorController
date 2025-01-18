@@ -9,14 +9,14 @@ public class AdbConnection
     private readonly ILogger<ProjectorConnection> logger;
     private readonly IHubContext<GUIHub> hub;
     private readonly AndroidTVController androidTvController;
-    private readonly TaskRunner<KeyCodes> taskRunner;
+    private readonly CommandRunner<KeyCodes> commandRunner;
     private string ip => androidTvController.Ip;
-    public AdbConnection(ILogger<ProjectorConnection> logger, IHubContext<GUIHub> hub, AndroidTVController androidTvController, TaskRunner<KeyCodes> taskRunner)
+    public AdbConnection(ILogger<ProjectorConnection> logger, IHubContext<GUIHub> hub, AndroidTVController androidTvController, CommandRunner<KeyCodes> commandRunner)
     {
         this.logger = logger;
         this.hub = hub;
         this.androidTvController = androidTvController;
-        this.taskRunner = taskRunner;
+        this.commandRunner = commandRunner;
         _ = Start();
     }
 
@@ -24,7 +24,7 @@ public class AdbConnection
     {
         androidTvController.AdbClient.RegisterOnDisconnect(OnDisconnected);
         androidTvController.AdbClient.RegisterOnConnect(OnConnected);
-        await taskRunner.Start(SendCommand);
+        await commandRunner.Start(SendCommand);
         await androidTvController.Connect(CancellationToken.None);
     }
     
@@ -54,7 +54,7 @@ public class AdbConnection
 
     public async Task EnqueueCommand(KeyCodes command)
     {
-        await taskRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
     }
     
     public Task EnqueueOpenAppCommand(KeyCodes command)
@@ -64,17 +64,18 @@ public class AdbConnection
             KeyCodes.Netflix => AndroidTVApps.Netflix,
             KeyCodes.Youtube => AndroidTVApps.YouTube,
             KeyCodes.AmazonPrime => AndroidTVApps.AmazonPrime, 
+            KeyCodes.DisneyPlus => AndroidTVApps.DisneyPlus, 
             _ => throw new NotImplementedException()
         };
         
         androidTvController.OpenApp(app);
-        // await taskRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        // await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
         return Task.CompletedTask;
     }
     
     public async Task EnqueueQuery(KeyCodes command)
     {
-        await taskRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
     }
 
     private Task SendCommandResponseToClients(KeyCodes commandType, string response)

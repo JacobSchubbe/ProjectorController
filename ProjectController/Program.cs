@@ -10,8 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<TcpConnection>();
 builder.Services.AddSingleton<ADBClient>();
-builder.Services.AddSingleton<TaskRunner<ProjectorCommands>>();
-builder.Services.AddSingleton<TaskRunner<KeyCodes>>();
+builder.Services.AddSingleton<CommandRunner<ProjectorCommands>>();
+builder.Services.AddSingleton<CommandRunner<KeyCodes>>();
 builder.Services.AddSingleton<AndroidTVController>();
 builder.Services.AddSingleton<ProjectorConnection>();
 builder.Services.AddSingleton<AdbConnection>();

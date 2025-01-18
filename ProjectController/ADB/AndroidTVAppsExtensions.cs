@@ -25,7 +25,12 @@ public enum AndroidTVApps
     /// <summary>
     /// Shahid app for Android TV
     /// </summary>
-    Shahid
+    Shahid,
+
+    /// <summary>
+    /// Disney+ for Android TV
+    /// </summary>
+    DisneyPlus
 }
 
 public static class AndroidTVAppsExtensions
@@ -44,6 +49,7 @@ public static class AndroidTVAppsExtensions
             AndroidTVApps.AmazonPrime => "com.amazon.amazonvideo.livingroom/com.amazon.ignition.IgnitionActivity",
             AndroidTVApps.WatchIt => "com.watchit.vod/.refactor.splash.ui.SplashActivity",
             AndroidTVApps.Shahid => "net.mbc.shahidTV/.MainActivity",
+            AndroidTVApps.DisneyPlus => "com.disney.disneyplus/com.bamtechmedia.dominguez.main.MainActivity",
             _ => throw new ArgumentOutOfRangeException(nameof(app), app, "Unknown app selected.")
         };
     }

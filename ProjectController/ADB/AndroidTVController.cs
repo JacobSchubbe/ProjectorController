@@ -124,7 +124,8 @@ public class AndroidTVController
         { AndroidTVApps.Netflix, () => ExecuteOpenApp(AndroidTVApps.Netflix) },
         { AndroidTVApps.AmazonPrime, () => ExecuteOpenApp(AndroidTVApps.AmazonPrime) },
         { AndroidTVApps.WatchIt, () => ExecuteOpenApp(AndroidTVApps.WatchIt) },
-        { AndroidTVApps.Shahid, () => ExecuteOpenApp(AndroidTVApps.Shahid) }
+        { AndroidTVApps.Shahid, () => ExecuteOpenApp(AndroidTVApps.Shahid) },
+        { AndroidTVApps.DisneyPlus, () => ExecuteOpenApp(AndroidTVApps.DisneyPlus) }
     };
 
     private void ExecuteOpenApp(AndroidTVApps app)

@@ -6,8 +6,8 @@ namespace ProjectController.TCPCommunication;
 public sealed class TcpConnection : IDisposable
 {
     private readonly ILogger<TcpConnection> logger;
-    private readonly Socket socket;
     private readonly SemaphoreSlim connectionSemaphore = new(1, 1);
+    private Socket socket;
     
     private event Func<Task>? disconnectEvent;
     private event Func<Task>? connectEvent;
@@ -24,13 +24,52 @@ public sealed class TcpConnection : IDisposable
         this.logger = logger;
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         Task.Run(async () => await DetectConnectionChange(CancellationToken.None));
+        Task.Run(StartHeartbeatSender);
     }
 
     public Task Start(string host, int port)
     {
+        // await CreateNewSocket(host, port);
         this.host = host;
         this.port = port;
+
         return Task.CompletedTask;
+    }
+
+    private async Task CreateNewSocket(string host, int port)
+    {
+        await connectionChangeCheckSemaphore.WaitAsync();
+        try
+        {
+            this.host = host;
+            this.port = port;
+
+            if (socket?.Connected ?? false)
+            {
+                socket.Shutdown(SocketShutdown.Both);
+                socket.Close();
+            }
+
+            socket?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError($"Error disposing old socket: {ex.Message}");
+        }
+
+        try
+        {
+            logger.LogInformation("Creating a new socket...");
+            socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError($"Error creating new socket: {ex.Message}");
+        }
+        finally
+        {
+            connectionChangeCheckSemaphore.Release();
+        }
     }
 
     public async Task Disconnect()
@@ -152,21 +191,62 @@ public sealed class TcpConnection : IDisposable
         }
     }
     
-    public string SendCommand(string commandStr)
+    public async Task<string> SendCommand(string commandStr)
     {
-        var commandBytes = Encoding.ASCII.GetBytes(commandStr);
-        socket.Send(commandBytes);
+        while (true)
+        {
+            try
+            {
+                var commandBytes = Encoding.ASCII.GetBytes(commandStr);
+                socket.Send(commandBytes);
+                logger.LogInformation($"Sent command: {commandStr.Replace("\r", "\\r")}");
+                var bytesRead = socket.Receive(buffer);
+                var rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                logger.LogInformation($"Received response: {rawResponse.Replace("\r", "\\r")}");
+                return rawResponse;
+            }
+            catch (SocketException)
+            {
+                await CreateNewSocket(host, port);
+            }
 
-        logger.LogInformation($"Sent command: {commandStr.Replace("\r", "\\r")}");
-
-        var bytesRead = socket.Receive(buffer);
-        var rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-        logger.LogInformation($"Received response: {rawResponse.Replace("\r", "\\r")}");
-        return rawResponse;
+            await Task.Delay(100);
+        }
+    }
+    
+    private async void StartHeartbeatSender()
+    {
+        try
+        {
+            while (!socket.Connected)
+            {
+                var heartbeatMessage = Encoding.ASCII.GetBytes("PING\r");
+                socket.Send(heartbeatMessage);
+                logger.LogDebug("Sent heartbeat to keep connection alive.");
+                await Task.Delay(TimeSpan.FromSeconds(10), CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError($"Error while sending heartbeat: {ex.Message}");
+        }
     }
     
     public void Dispose()
     {
-        socket?.Dispose();
-    }
-}
+        try
+        {
+            if (!socket.Connected) return;
+            
+            socket.Shutdown(SocketShutdown.Both);
+            socket.Close();
+        }
+        catch (SocketException ex)
+        {
+            logger.LogError($"Error while closing the socket: {ex.Message}");
+        }
+        finally
+        {
+            socket.Dispose();
+        }
+    }}

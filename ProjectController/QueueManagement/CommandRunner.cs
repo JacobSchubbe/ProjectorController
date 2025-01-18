@@ -2,9 +2,9 @@ using Microsoft.AspNetCore.Connections;
 
 namespace ProjectController.QueueManagement;
 
-public class TaskRunner<TCommands> where TCommands : Enum
+public class CommandRunner<TCommands> where TCommands : Enum
 {
-    private readonly ILogger<TaskRunner<TCommands>> logger;
+    private readonly ILogger<CommandRunner<TCommands>> logger;
     private readonly Queue<(TCommands command, Func<TCommands, string, Task> callback)> commandQueue = new();
 
     private CancellationTokenSource? runningCancellationTokenSource;
@@ -13,7 +13,7 @@ public class TaskRunner<TCommands> where TCommands : Enum
     private readonly SemaphoreSlim queueAccessSemaphore = new(1, 1);
     public event Func<CancellationToken, Task>? PreCommandEvent;
 
-    public TaskRunner(ILogger<TaskRunner<TCommands>> logger)
+    public CommandRunner(ILogger<CommandRunner<TCommands>> logger)
     {
         this.logger = logger;
     }
@@ -88,7 +88,7 @@ public class TaskRunner<TCommands> where TCommands : Enum
                 }
                 catch (Exception e)
                 {
-                    logger.LogError($"Exception while trying to send a command. Type: {e.GetType().FullName}, Message: {e.Message}");
+                    logger.LogError("Exception while trying to send a command. Type: {type}, Message: {message}", e.GetType().FullName, e.Message);
                 }
             
                 await Task.Delay(TimeSpan.FromMilliseconds(100), token);
@@ -128,7 +128,7 @@ public class TaskRunner<TCommands> where TCommands : Enum
         }
     }
 
-    public async Task ClearQueue(CancellationToken token)
+    private async Task ClearQueue(CancellationToken token)
     {
         await queueAccessSemaphore.WaitAsync(token);
         try
