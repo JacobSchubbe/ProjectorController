@@ -13,17 +13,24 @@
     
 
     <div class="projector-controls">
+      <ControlButton
+          :disabled="buttonDisabledPowerButton"
+          :onClick="() =>
+          handleClickProjectorCommands(
+            state.ProjectorPoweredOn ? ProjectorConstants.ProjectorCommands.SystemControlPowerOff : ProjectorConstants.ProjectorCommands.SystemControlPowerOn
+          )">
+        {{ powerButtonText }}
+      </ControlButton>
       
       <div class="control-row">
-        <ControlButton
-            :disabled="buttonDisabledPowerButton"
-            :onClick="() =>
-            handleClickProjectorCommands(
-              state.ProjectorPoweredOn ? powerOffCommand : powerOnCommand
-            )">
-          {{ powerButtonText }}
-        </ControlButton>
 
+        <ControlButton
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_BACK)"
+        >
+          Back
+        </ControlButton>
+        
         <ControlButton
             :disabled="buttonDisabledWhenPowerOff"
             :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_UP)"
@@ -32,11 +39,58 @@
         </ControlButton>
         
         <ControlButton
-            class="control-button enter-button"
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_HOME)"
+        >
+          Home
+        </ControlButton>
+      </div>
+      
+      <div class="control-row">
+        <ControlButton
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_LEFT)"
+        >
+          Left
+        </ControlButton>
+
+        <ControlButton
+            styleClass="control-button enter-button"
             :disabled="buttonDisabledWhenPowerOff"
             :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_ENTER)"
         >
           Enter
+        </ControlButton>
+
+        <ControlButton
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_RIGHT)"
+        >
+          Right
+        </ControlButton>
+      </div>
+      
+      <div class="control-row">
+        <ControlButton
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_ENTER)"
+        >
+          Enter
+        </ControlButton>
+      </div>
+      
+      <div class="control-row">
+        <ControlButton
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickProjectorCommands(ProjectorConstants.ProjectorCommands.KeyControlVolumeDown)"
+        >
+          Volume<br/><br/>-
+        </ControlButton>
+        <ControlButton
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickProjectorCommands(ProjectorConstants.ProjectorCommands.KeyControlVolumeUp)"
+        >
+          Volume<br/><br/>+
         </ControlButton>
       </div>
 
@@ -57,6 +111,22 @@
             :disabled="buttonDisabledWhenPowerOff"
         />
       </div>
+      <div class="control-row">
+        <MediaButton
+            icon="/assets/prime-video-logo.png"
+            class="control-button media-button"
+            alt="PrimeVideo"
+            :onClick="() => handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.AmazonPrime)"
+            :disabled="buttonDisabledWhenPowerOff"
+        />
+        <MediaButton
+            icon="/assets/disney-logo.jpg"
+            class="control-button media-button"
+            alt="DisneyPlus"
+            :onClick="() => handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.DisneyPlus)"
+            :disabled="buttonDisabledWhenPowerOff"
+        />
+      </div>
       
     </div>
   </div>
@@ -66,11 +136,11 @@
 import { onMounted, onUnmounted } from "vue";
 import { SignalRInstance } from "./SignalRServiceManager";
 import * as adbConstants from "./Constants/AdbConstants";
+import * as projectorConstants from "./Constants/ProjectorConstants";
 import Dropdown from "@/components/DropDown.vue";
 import ControlButton from "@/components/ControlButton.vue";
 import MediaButton from "@/components/MediaButton.vue";
 import { useProjector } from "@/composables/useProjector";
-import * as projectorConstants from "@/Constants/ProjectorConstants";
 
 // Use composable to manage projector state and logic
 const {

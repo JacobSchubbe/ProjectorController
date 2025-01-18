@@ -33,14 +33,4 @@ button {
   margin: 10px;
   padding: 10px;
 }
-.control-button {
-  background-color: #007bff;
-  color: white;
-  /* Additional button styles here */
-}
-.control-button:disabled {
-  background-color: #ccc;
-  color: #666;
-  pointer-events: none;
-}
 </style>
