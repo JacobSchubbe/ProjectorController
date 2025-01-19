@@ -136,6 +136,13 @@
             :disabled="buttonDisabledWhenPowerOff"
         />
       </div>
+      <div class="control-row">
+        <ControlButton
+            :onClick="() => handleClickTVCommand(tvConstants.IRCommands.KEY_POWER)"
+        >
+          TV Power
+        </ControlButton>
+      </div>
       
     </div>
   </div>
@@ -146,6 +153,7 @@ import { onMounted, onUnmounted } from "vue";
 import { SignalRInstance } from "./SignalRServiceManager";
 import * as adbConstants from "./Constants/AdbConstants";
 import * as projectorConstants from "./Constants/ProjectorConstants";
+import * as tvConstants from "./Constants/TVConstants";
 import Dropdown from "@/components/DropDown.vue";
 import ControlButton from "@/components/ControlButton.vue";
 import MediaButton from "@/components/MediaButton.vue";
@@ -158,6 +166,7 @@ const {
   buttonDisabledWhenPowerOff,
   handleDropdownChange,
   handleClickProjectorCommands,
+  handleClickTVCommand,
   handleClickAndroidCommand,
   handleClickAndroidOpenAppCommand,
   handleProjectorConnectionStateChange,
