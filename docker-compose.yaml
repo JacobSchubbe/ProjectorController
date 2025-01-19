@@ -18,3 +18,4 @@ services:
       - "5555:5555"
     volumes:
       - /home/logs:/app/logs
+    restart: always

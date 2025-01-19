@@ -31,7 +31,7 @@ public class AndroidTVController
     public bool IsConnected()
     {
         var status = AdbClient.IsConnected(Ip);
-        Log($"Connection status: {status}");
+        Log($"AndroidTV Connection status: {status}");
         return status;
     }
 

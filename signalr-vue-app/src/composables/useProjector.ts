@@ -1,0 +1,165 @@
+import { reactive, computed } from "vue";
+import { SignalRInstance } from "@/SignalRServiceManager";
+import * as projectorConstants from "@/Constants/ProjectorConstants";
+import * as adbConstants from "@/Constants/AdbConstants";
+
+export function useProjector() {
+  const state = reactive({
+    selectedInput: -1,
+    GUIConnected: false,
+    ProjectorConnected: false,
+    AndroidTVConnected: false,
+    ProjectorPoweredOn: projectorConstants.PowerStatusGui.Pending,
+  });
+
+  const buttonDisabledWhenPowerOff = computed(() => {
+    return !state.GUIConnected ||
+      !state.ProjectorConnected ||
+      !state.ProjectorPoweredOn ||
+      !state.AndroidTVConnected ||
+      state.ProjectorPoweredOn !== projectorConstants.PowerStatusGui.On ||
+      state.selectedInput !== projectorConstants.ProjectorCommands.SystemControlSourceHDMI3;
+  });
+
+  const buttonDisabledPowerButton = computed(() => {
+    return !state.GUIConnected ||
+      !state.ProjectorConnected ||
+      state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.Pending;
+  });
+
+  const powerButtonText = computed(() => {
+    if (!state.GUIConnected) return "GUI Not Connected";
+    if (!state.ProjectorConnected) return "Projector Not Connected";
+    return state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.Pending
+      ? "Loading..."
+      : state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.On
+      ? "Turn Power Off"
+      : "Turn Power On";
+  });
+
+  const handlePowerToggle = (isPoweredOn: boolean) => {
+    if (isPoweredOn) {
+      handleClickProjectorCommands(projectorConstants.ProjectorCommands.SystemControlPowerOn);
+    } else {
+      handleClickProjectorCommands(projectorConstants.ProjectorCommands.SystemControlPowerOff);
+    }
+  };
+
+  const handleProjectorConnectionStateChange = async (isConnected: boolean) => {
+    state.ProjectorConnected = isConnected;
+    if (state.ProjectorConnected) {
+      SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
+    }
+    else
+    {
+      state.selectedInput = -1;
+      state.ProjectorPoweredOn = projectorConstants.PowerStatusGui.Pending;
+    }
+  }
+
+  const handleAndroidTVConnectionStateChange = async (isConnected: boolean) => {
+    if (state.AndroidTVConnected != isConnected)
+    {
+      state.AndroidTVConnected = isConnected;
+      if (state.AndroidTVConnected) {
+        SignalRInstance.getIsConnectedToAndroidTV();
+      }
+    }
+  }
+
+  const handleProjectorQueryResponse = (queryType:Number, currentStatus:Number) => {
+    switch (queryType) {
+      case projectorConstants.ProjectorCommands.SystemControlSourceQuery:
+        console.log(`Projector Source query response: ${currentStatus}`);
+        state.selectedInput = currentStatus as projectorConstants.ProjectorCommands;
+        break;
+      case projectorConstants.ProjectorCommands.SystemControlPowerQuery:
+        console.log(`Projector Power query response: ${currentStatus}`);
+        state.ProjectorPoweredOn = getPowerStatusGui(currentStatus as projectorConstants.PowerStatusProjector);
+        if (state.ProjectorPoweredOn){
+          SignalRInstance.queryForInitialProjectorStatuses();
+        }
+        break;
+      default:
+        console.error("Invalid input selected");
+        return;
+    }
+  }
+
+  const getPowerStatusGui = (status:projectorConstants.PowerStatusProjector) => {
+    switch (status) {
+      case projectorConstants.PowerStatusProjector.StandbyNetworkOn:
+        return projectorConstants.PowerStatusGui.Off;
+      case projectorConstants.PowerStatusProjector.LampOn:
+      case projectorConstants.PowerStatusProjector.Warmup:
+        return projectorConstants.PowerStatusGui.On;
+      default:
+        return projectorConstants.PowerStatusGui.Pending;
+    }
+  }
+
+  const handleGUIConnectionStateChange = (isConnected: boolean) => {
+    state.GUIConnected = isConnected;
+    if (!state.GUIConnected) {
+      state.selectedInput = -1;
+      state.ProjectorPoweredOn = projectorConstants.PowerStatusGui.Pending;
+      state.ProjectorConnected = false;
+    }
+  }
+
+  const handleClickAndroidCommand = async (command: adbConstants.KeyCodes) => {
+    SignalRInstance.sendAndroidCommand(command);
+    console.log(`Command sent: ${command}`);
+  }
+
+  const handleClickAndroidOpenAppCommand = async (command: adbConstants.KeyCodes) => {
+    SignalRInstance.sendAndroidOpenAppCommand(command);
+    console.log(`Command sent: ${command}`);
+  }
+
+  const handleClickProjectorCommands = async (command: projectorConstants.ProjectorCommands) => {
+    SignalRInstance.sendProjectorCommand(command);
+    console.log(`Command sent: ${command}`);
+
+    switch (command) {
+      case projectorConstants.ProjectorCommands.SystemControlPowerOff:
+        while (state.ProjectorPoweredOn != projectorConstants.PowerStatusGui.Off) {
+          console.log("Waiting for power off...");
+          SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
+          await new Promise(resolve => setTimeout(resolve, 4000));
+        }
+        console.log("Power off complete");
+        break;
+      case projectorConstants.ProjectorCommands.SystemControlPowerOn:
+        while (state.ProjectorPoweredOn != projectorConstants.PowerStatusGui.On) {
+          console.log("Waiting for power on...");
+          SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
+          await new Promise(resolve => setTimeout(resolve, 4000));
+        }
+        console.log("Power on complete");
+        break;
+    }
+  };
+
+  const handleDropdownChange = () => {
+    console.log(`Selected Input: ${state.selectedInput}`);
+    SignalRInstance.sendProjectorCommand(state.selectedInput);
+    console.log(`Command sent: ${state.selectedInput}`);
+  };
+
+  return {
+    state,
+    powerButtonText,
+    buttonDisabledPowerButton,
+    buttonDisabledWhenPowerOff,
+    handleDropdownChange,
+    handleClickProjectorCommands,
+    handleClickAndroidCommand,
+    handleClickAndroidOpenAppCommand,
+    handleProjectorConnectionStateChange,
+    handleAndroidTVConnectionStateChange,
+    handleProjectorQueryResponse,
+    handleGUIConnectionStateChange,
+    handlePowerToggle
+  };
+}
