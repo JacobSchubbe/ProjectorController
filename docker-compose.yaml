@@ -18,4 +18,7 @@ services:
       - "5555:5555"
     volumes:
       - /home/logs:/app/logs
+      - /var/run/lirc:/var/run/lirc # Maps the LIRC socket directory
+    devices:
+      - /dev/lirc0:/dev/lirc0 # Maps the LIRC device
     restart: always
