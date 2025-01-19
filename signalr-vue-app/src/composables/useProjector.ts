@@ -37,6 +37,14 @@ export function useProjector() {
       : "Turn Power On";
   });
 
+  const handlePowerToggle = (isPoweredOn: boolean) => {
+    if (isPoweredOn) {
+      handleClickProjectorCommands(projectorConstants.ProjectorCommands.SystemControlPowerOn);
+    } else {
+      handleClickProjectorCommands(projectorConstants.ProjectorCommands.SystemControlPowerOff);
+    }
+  };
+
   const handleProjectorConnectionStateChange = async (isConnected: boolean) => {
     state.ProjectorConnected = isConnected;
     if (state.ProjectorConnected) {
@@ -151,6 +159,7 @@ export function useProjector() {
     handleProjectorConnectionStateChange,
     handleAndroidTVConnectionStateChange,
     handleProjectorQueryResponse,
-    handleGUIConnectionStateChange
+    handleGUIConnectionStateChange,
+    handlePowerToggle
   };
 }

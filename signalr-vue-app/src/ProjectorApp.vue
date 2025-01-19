@@ -1,27 +1,36 @@
 <template>
   <div id="app">
-    <!-- Dropdown Component -->
-    <Dropdown
-        label="Select Input:"
-        v-model="state.selectedInput"
-        :options="inputOptions"
-        @change="handleDropdownChange"
-    />
+    <div class="header-container">
+      <!-- Left Section (Dropdown Menu) -->
+      <div class="header-item">
+        <Dropdown
+            label="Select Input:"
+            v-model="state.selectedInput"
+            :options="inputOptions"
+            @change="handleDropdownChange"
+        />
+      </div>
 
-    <label>GUI Connected: {{ state.GUIConnected }}</label>
+      <!-- Center Section (GUI Status) -->
+      <div class="header-item">
+        <label>GUI Connected: {{ state.GUIConnected }}</label>
+      </div>
 
-    
-
+      <!-- Right Section (Projector Power Toggle) -->
+      <div class="header-section">
+        <div class="toggle-container">
+          <label class="toggle-label">
+            Projector Power
+          </label>
+          <ToggleSwitch
+              :isChecked="state.ProjectorPoweredOn"
+              :disabled="buttonDisabledPowerButton"
+              @update:isChecked="handlePowerToggle"
+          />
+        </div>
+      </div>
+    </div>
     <div class="projector-controls">
-      <ControlButton
-          :disabled="buttonDisabledPowerButton"
-          :onClick="() =>
-          handleClickProjectorCommands(
-            state.ProjectorPoweredOn ? ProjectorConstants.ProjectorCommands.SystemControlPowerOff : ProjectorConstants.ProjectorCommands.SystemControlPowerOn
-          )">
-        {{ powerButtonText }}
-      </ControlButton>
-      
       <div class="control-row">
 
         <ControlButton
@@ -73,22 +82,22 @@
       <div class="control-row">
         <ControlButton
             :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_ENTER)"
+            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_DOWN)"
         >
-          Enter
+          Down
         </ControlButton>
       </div>
       
       <div class="control-row">
         <ControlButton
             :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickProjectorCommands(ProjectorConstants.ProjectorCommands.KeyControlVolumeDown)"
+            :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeDown)"
         >
           Volume<br/><br/>-
         </ControlButton>
         <ControlButton
             :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickProjectorCommands(ProjectorConstants.ProjectorCommands.KeyControlVolumeUp)"
+            :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeUp)"
         >
           Volume<br/><br/>+
         </ControlButton>
@@ -141,11 +150,10 @@ import Dropdown from "@/components/DropDown.vue";
 import ControlButton from "@/components/ControlButton.vue";
 import MediaButton from "@/components/MediaButton.vue";
 import { useProjector } from "@/composables/useProjector";
+import ToggleSwitch from "@/components/ToggleSwitch.vue";
 
-// Use composable to manage projector state and logic
 const {
   state,
-  powerButtonText,
   buttonDisabledPowerButton,
   buttonDisabledWhenPowerOff,
   handleDropdownChange,
@@ -155,10 +163,10 @@ const {
   handleProjectorConnectionStateChange,
   handleAndroidTVConnectionStateChange,
   handleProjectorQueryResponse,
-  handleGUIConnectionStateChange
+  handleGUIConnectionStateChange,
+  handlePowerToggle
 } = useProjector();
 
-// Input options for the dropdown
 const inputOptions = [
   { label: "TV/Switch", value: projectorConstants.ProjectorCommands.SystemControlSourceHDMI1 },
   { label: "SmartTV", value: projectorConstants.ProjectorCommands.SystemControlSourceHDMI3 },
@@ -293,5 +301,57 @@ select {
   pointer-events: none; /* Ensure clicking on the image still triggers the button */
 }
 
+.header-container {
+  display: flex; /* Create flex container for horizontal row */
+  width: 100%; /* Full width of screen */
+  background-color: #f8f9fa; /* Optional: Light background */
+  border-bottom: 1px solid #ddd; /* Optional: Divider */
+  padding: 10px 0; /* Add some padding above and below header */
+}
+
+/* Each section (1/3 width) */
+.header-item {
+  flex: 1; /* Make each section take 1/3 of the container */
+  display: flex; /* Use flexbox for centering */
+  justify-content: center; /* Center content horizontally in each section */
+  align-items: center; /* Center content vertically in each section */
+  text-align: center; /* Center text within the section */
+}
+
+.header-section {
+  flex: 1; /* Each section takes 1/3 of the total width */
+  display: flex; /* Flexbox for aligning child elements */
+  justify-content: center; /* Center horizontally within section */
+  align-items: center; /* Center vertically within section */
+  text-align: center; /* Center text for labels */
+  padding: 0 10px; /* Optional: Horizontal padding */
+}
+
+/* Toggle container for label and switch alignment */
+.toggle-container {
+  display: flex; /* Set as a row layout */
+  flex-direction: row; /* Ensure horizontal alignment */
+  align-items: center; /* Vertically align the label and toggle */
+  gap: 10px; /* Add space between the label and the ToggleSwitch */
+}
+
+/* Align text within the toggle container */
+.centered-text {
+  text-align: center; /* Center text */
+  margin-bottom: 8px; /* Add spacing between label and toggle switch */
+}
+
+label {
+  font-size: 14px; /* Optional: Adjust label font size */
+  margin: 0;
+}
+
+.right-aligned {
+  display: flex;
+  flex-direction: column; /* Optional: stack text and toggle vertically */
+  align-items: flex-end; /* Align items to the right */
+  text-align: right; /* Align text within the container to the right */
+  white-space: nowrap; /* Prevent text from wrapping unless desired */
+}
 
 </style>
