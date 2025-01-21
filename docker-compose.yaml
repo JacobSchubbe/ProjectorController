@@ -17,8 +17,9 @@ services:
       - "5037:5037"
       - "5555:5555"
     volumes:
-      - /home/logs:/app/logs
+      - /home/logs:/app/logs # Maps the log directory
       - /var/run/lirc:/var/run/lirc # Maps the LIRC socket directory
     devices:
       - /dev/lirc0:/dev/lirc0 # Maps the LIRC device
+    privileged: true # Grants elevated privileges to access host hardware
     restart: always
