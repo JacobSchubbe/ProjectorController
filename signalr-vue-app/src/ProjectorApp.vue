@@ -138,9 +138,33 @@
       </div>
       <div class="control-row">
         <ControlButton
+            :onClick="() => handleClickTVCommand(tvConstants.IRCommands.BTN_DPAD_UP)"
+        >
+          Up
+        </ControlButton>
+      </div>
+      <div class="control-row">
+        <ControlButton
+            :onClick="() => handleClickTVCommand(tvConstants.IRCommands.BTN_DPAD_LEFT)"
+        >
+          Left
+        </ControlButton>
+        <ControlButton
             :onClick="() => handleClickTVCommand(tvConstants.IRCommands.KEY_POWER)"
         >
           TV Power
+        </ControlButton>
+        <ControlButton
+            :onClick="() => handleClickTVCommand(tvConstants.IRCommands.BTN_DPAD_RIGHT)"
+        >
+          Right
+        </ControlButton>
+      </div>
+      <div class="control-row">
+        <ControlButton
+            :onClick="() => handleClickTVCommand(tvConstants.IRCommands.BTN_DPAD_DOWN)"
+        >
+          Down
         </ControlButton>
       </div>
       
