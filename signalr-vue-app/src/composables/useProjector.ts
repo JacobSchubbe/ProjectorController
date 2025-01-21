@@ -2,6 +2,7 @@ import { reactive, computed } from "vue";
 import { SignalRInstance } from "@/SignalRServiceManager";
 import * as projectorConstants from "@/Constants/ProjectorConstants";
 import * as adbConstants from "@/Constants/AdbConstants";
+import * as tvConstants from "@/Constants/TVConstants";
 
 export function useProjector() {
   const state = reactive({
@@ -107,19 +108,24 @@ export function useProjector() {
     }
   }
 
+  const handleClickTVCommand = async (command: tvConstants.IRCommands) => {
+    SignalRInstance.sendTVCommand(command);
+    console.log(`TV Command sent: ${command}`);
+  }
+
   const handleClickAndroidCommand = async (command: adbConstants.KeyCodes) => {
     SignalRInstance.sendAndroidCommand(command);
-    console.log(`Command sent: ${command}`);
+    console.log(`Android Command sent: ${command}`);
   }
 
   const handleClickAndroidOpenAppCommand = async (command: adbConstants.KeyCodes) => {
     SignalRInstance.sendAndroidOpenAppCommand(command);
-    console.log(`Command sent: ${command}`);
+    console.log(`Android App Command sent: ${command}`);
   }
 
   const handleClickProjectorCommands = async (command: projectorConstants.ProjectorCommands) => {
     SignalRInstance.sendProjectorCommand(command);
-    console.log(`Command sent: ${command}`);
+    console.log(`Projector Command sent: ${command}`);
 
     switch (command) {
       case projectorConstants.ProjectorCommands.SystemControlPowerOff:
@@ -154,6 +160,7 @@ export function useProjector() {
     buttonDisabledWhenPowerOff,
     handleDropdownChange,
     handleClickProjectorCommands,
+    handleClickTVCommand,
     handleClickAndroidCommand,
     handleClickAndroidOpenAppCommand,
     handleProjectorConnectionStateChange,

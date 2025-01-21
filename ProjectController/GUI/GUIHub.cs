@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using ProjectController.ADB;
 using ProjectController.Projector;
+using ProjectController.TVControls;
 using static ProjectController.Projector.ProjectorConstants;
 
 public class GUIHub : Hub
@@ -36,19 +37,26 @@ public class GUIHub : Hub
     
     public async Task ReceiveProjectorCommand(ProjectorCommands command)
     {
-        logger.LogInformation($"Received command: {command.ToString()}");
+        logger.LogInformation($"Received projector command: {command.ToString()}");
         await projectorConnection.EnqueueCommand(command);
     }
     
     public async Task ReceiveProjectorQuery(ProjectorCommands command)
     {
-        logger.LogInformation($"Received query: {command.ToString()}");
+        logger.LogInformation($"Received projector query: {command.ToString()}");
         await projectorConnection.EnqueueQuery(command);
+    }
+    
+    public Task ReceiveTVCommand(IRCommands command)
+    {
+        logger.LogInformation($"Received TV command: {command.ToString()}");
+        IRCommandManager.SendIRCommand(command);
+        return Task.CompletedTask;
     }
     
     public async Task ReceiveAndroidCommand(KeyCodes command)
     {
-        logger.LogInformation($"Received command: {command.ToString()}");
+        logger.LogInformation($"Received android command: {command.ToString()}");
         await adbConnection.EnqueueCommand(command);
     }
     
@@ -60,7 +68,7 @@ public class GUIHub : Hub
     
     public async Task ReceiveAndroidQuery(KeyCodes command)
     {
-        logger.LogInformation($"Received query: {command.ToString()}");
+        logger.LogInformation($"Received android query: {command.ToString()}");
         await adbConnection.EnqueueQuery(command);
     }
 }

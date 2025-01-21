@@ -27,13 +27,13 @@ public sealed class TcpConnection : IDisposable
         Task.Run(StartHeartbeatSender);
     }
 
-    public async Task Start(string host, int port)
+    public Task Start(string host, int port)
     {
-        await CreateNewSocket(host, port);
+        // await CreateNewSocket(host, port);
         this.host = host;
         this.port = port;
 
-        // return Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     private async Task CreateNewSocket(string host, int port)
@@ -218,34 +218,17 @@ public sealed class TcpConnection : IDisposable
     {
         try
         {
-            while (true)
+            while (!socket.Connected)
             {
-                try
-                {
-                    if (socket.Connected)
-                    {
-                        var heartbeatMessage = Encoding.ASCII.GetBytes("PING\r");
-                        socket.Send(heartbeatMessage);
-                        logger.LogDebug("Sent heartbeat to keep connection alive.");
-                    }
-                    else
-                    {
-                        logger.LogWarning("Socket is not connected. Attempting to reconnect...");
-                        await CreateNewSocket(host, port);
-                    }
-                }
-                catch (SocketException ex)
-                {
-                    logger.LogError($"Socket exception in heartbeat: {ex.Message}. Reinitializing socket...");
-                    await CreateNewSocket(host, port);
-                }
-
-                await Task.Delay(TimeSpan.FromSeconds(10));
+                var heartbeatMessage = Encoding.ASCII.GetBytes("PING\r");
+                socket.Send(heartbeatMessage);
+                logger.LogDebug("Sent heartbeat to keep connection alive.");
+                await Task.Delay(TimeSpan.FromSeconds(10), CancellationToken.None);
             }
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            logger.LogError($"Error in heartbeat sender: {e.Message}");
+            logger.LogError($"Error while sending heartbeat: {ex.Message}");
         }
     }
     

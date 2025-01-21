@@ -1,6 +1,7 @@
 import * as signalR from '@microsoft/signalr';
 import * as projectorConstants from "./Constants/ProjectorConstants";
 import * as adbConstants from "./Constants/AdbConstants";
+import * as tvConstants from "./Constants/TVConstants";
 import { HubConnectionState } from '@microsoft/signalr';
 
 // Types for messages/events
@@ -190,6 +191,11 @@ class SignalRService {
         this.invoke('ReceiveProjectorQuery', command);
     }
     
+    sendTVCommand(command: tvConstants.IRCommands): void {
+        console.log(`Sending TV command: ${command}`);
+        this.invoke('ReceiveTVCommand', command);
+    }
+
     sendAndroidCommand(command: adbConstants.KeyCodes): void {
         console.log(`Sending AndroidTV command: ${command}`);
         this.invoke('ReceiveAndroidCommand', command);

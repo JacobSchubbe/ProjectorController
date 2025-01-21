@@ -31,14 +31,16 @@ RUN apk add --no-cache \
     nginx \
     icu-libs \
     android-tools \
-    bash
+    bash \
+    lirc
 
 WORKDIR /app
 COPY --from=build /app/publish /app/
-
 COPY nginx/nginx.conf /etc/nginx/http.d/default.conf
-
 COPY --from=frontend-builder /signalr-vue-app/dist /usr/share/nginx/html
+COPY ./LIRCConfigs/DenverCableBox.lircd.conf /etc/lirc/lircd.conf.d/DenverCableBox.lircd.conf
+COPY ./LIRCConfigs/lirc_options.conf /etc/lirc/lirc_options.conf
+RUN rm -f /etc/lirc/lircd.conf.d/default.lircd.conf
 
 EXPOSE 80 19521 5037 5555
 

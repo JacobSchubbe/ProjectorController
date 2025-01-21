@@ -1,0 +1,39 @@
+sudo nano /etc/lirc/lirc_options.conf
+   [lircd]
+   driver = default
+   device = /dev/lirc1
+
+sudo systemctl restart lircd
+
+ls -l /var/run/lirc/ -> verifies socket for lirc
+ls -l /dev/lirc*  -> verifies devices are connected
+
+sudo nano /etc/modules -> ensures modules load (manually: sudo modprobe gpio_ir_tx, sudo modprobe gpio_ir_recv), add gpio_ir_tx, gpio_ir_recv, remove the lirc rpi specific one
+
+sudo nano /etc/modprobe.d/blacklist.conf -> blacklist the lirc_rpi (blacklist lirc_rpi)
+
+mode2 -d /dev/lirc0 or lirc1
+
+
+
+
+sudo nano /boot/firmware/config.txt
+
+dtoverlay=gpio-ir,gpio_pin=27
+
+
+
+
+irrecord --list-namespace
+
+irrecord -d /dev/lirc0 ~/lircd.conf
+
+sudo nano lircd.conf (can view it after)
+
+(OBSOLETE) sudo cp lircd.conf /etc/lirc/lircd.conf
+
+sudo cp DenverCableBox.lircd.conf /etc/lirc/lircd.conf.d (and remove the default conf there)
+
+sudo /etc/init.d/lirc start
+
+irw
