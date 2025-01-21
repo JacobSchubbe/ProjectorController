@@ -152,6 +152,13 @@ const onTabFocused = () => {
 
 <style>
 
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box; /* Consistent box model */
+}
+
 button {
   margin: 10px;
   padding: 10px;
