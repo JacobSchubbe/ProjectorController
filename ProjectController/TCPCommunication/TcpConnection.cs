@@ -6,13 +6,13 @@ namespace ProjectController.TCPCommunication;
 public sealed class TcpConnection : IDisposable
 {
     private readonly ILogger<TcpConnection> logger;
-    private readonly SemaphoreSlim connectionSemaphore = new(1, 1);
     private Socket socket;
     
     private event Func<Task>? disconnectEvent;
     private event Func<Task>? connectEvent;
     private bool lastConnectionStatus;
     private readonly SemaphoreSlim connectionChangeCheckSemaphore = new(1, 1);
+    private readonly SemaphoreSlim socketSendingSemaphore = new(1, 1);
     
     private string host = string.Empty;
     private int port;
@@ -24,54 +24,73 @@ public sealed class TcpConnection : IDisposable
         this.logger = logger;
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         Task.Run(async () => await DetectConnectionChange(CancellationToken.None));
-        Task.Run(StartHeartbeatSender);
     }
 
-    public Task Start(string host, int port)
+    private async Task GetConnectionSemaphore(CancellationToken cancellationToken)
     {
-        // await CreateNewSocket(host, port);
-        this.host = host;
-        this.port = port;
+        await connectionChangeCheckSemaphore.WaitAsync(cancellationToken);
+    }
+
+    private void ReleaseConnectionSemaphore()
+    {
+        connectionChangeCheckSemaphore.Release();
+    }
+    
+    public Task Initialize(string newHost, int newPort)
+    {
+        host = newHost;
+        port = newPort;
 
         return Task.CompletedTask;
     }
-
-    private async Task CreateNewSocket(string host, int port)
+    
+    private async Task CreateNewSocket(string newHost, int newPort, CancellationToken cancellationToken)
     {
-        await connectionChangeCheckSemaphore.WaitAsync();
         try
         {
-            this.host = host;
-            this.port = port;
-
-            if (socket?.Connected ?? false)
-            {
-                socket.Shutdown(SocketShutdown.Both);
-                socket.Close();
-            }
-
-            socket?.Dispose();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError($"Error disposing old socket: {ex.Message}");
-        }
-
-        try
-        {
-            logger.LogInformation("Creating a new socket...");
+            await DisposeExistingSocket(); // Dispose of any existing socket
+        
+            // Create and configure a new socket
+            logger.LogInformation($"Creating a new socket for {host}:{port}...");
+            host = newHost;
+            port = newPort;
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            logger.LogInformation("New socket successfully created.");
+            await StartSocket(cancellationToken);
         }
         catch (Exception ex)
         {
-            logger.LogError($"Error creating new socket: {ex.Message}");
-        }
-        finally
-        {
-            connectionChangeCheckSemaphore.Release();
+            // Log full exception with stack trace for better diagnostics
+            logger.LogError(ex, $"Failed to create a new socket for {host}:{port}.");
         }
     }
 
+    private Task DisposeExistingSocket()
+    {
+        try
+        {
+            if (socket?.Connected ?? false)
+            {
+                logger.LogInformation("Shutting down the existing socket...");
+                socket.Shutdown(SocketShutdown.Both); // Shutdown the socket gracefully
+                socket.Close(); // Close the socket
+            }
+
+            logger.LogInformation("Disposing the old socket...");
+            socket?.Dispose(); // Dispose of the old socket
+            lastConnectionStatus = false;
+        }
+        catch (SocketException ex)
+        {
+            logger.LogError(ex, "SocketException occurred while disposing of the old socket.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected error occurred while disposing of the existing socket.");
+        }
+        return Task.CompletedTask;
+    }
+    
     public async Task Disconnect()
     {
         await socket.DisconnectAsync(true);
@@ -112,50 +131,60 @@ public sealed class TcpConnection : IDisposable
 
     private async Task CheckConnectionChange(CancellationToken cancellationToken)
     {
-        await connectionChangeCheckSemaphore.WaitAsync(cancellationToken);
+        await GetConnectionSemaphore(cancellationToken);
         try
         {
             var isConnected = socket is { Connected: true };
-            if (isConnected != lastConnectionStatus)
-            {
-                if (isConnected)
-                {
-                    ClearBuffer();
-                    await (connectEvent?.Invoke() ?? Task.CompletedTask);
-                }
-                else
-                {
-                    await (disconnectEvent?.Invoke() ?? Task.CompletedTask);
-                }
-                lastConnectionStatus = isConnected;
-            }
+            await HandleConnectionChange(isConnected, cancellationToken);
         }
         finally
         {
-            connectionChangeCheckSemaphore.Release();
+            ReleaseConnectionSemaphore();
         }
     }
-    
+
+    private async Task HandleConnectionChange(bool isConnected, CancellationToken cancellationToken)
+    {
+        if (isConnected != lastConnectionStatus)
+        {
+            if (isConnected)
+            {
+                ClearBuffer();
+                await (connectEvent?.Invoke() ?? Task.CompletedTask);
+            }
+            else
+            {
+                await (disconnectEvent?.Invoke() ?? Task.CompletedTask);
+            }
+            lastConnectionStatus = isConnected;
+        }
+    }
+
     public async Task CheckConnection(CancellationToken cancellationToken)
     {
-        await connectionSemaphore.WaitAsync(cancellationToken);
+        await GetConnectionSemaphore(cancellationToken);
         try
         {
             if (socket.Connected)
                 return;
             
-            logger.LogInformation($"Connecting to {host}:{port}...");
-            await socket.ConnectAsync(host, port, cancellationToken);
-            await CheckConnectionChange(cancellationToken);
-            logger.LogInformation($"Connected to {host}:{port}."); 
+            await StartSocket(cancellationToken);
         }
         finally
         {
-            connectionSemaphore.Release();
-        }
+            ReleaseConnectionSemaphore();
+        }            
     }
 
-    public void ClearBuffer()
+    private async Task StartSocket(CancellationToken cancellationToken)
+    {
+        logger.LogInformation($"Connecting to {host}:{port}...");
+        await socket.ConnectAsync(host, port, cancellationToken);
+        logger.LogInformation($"Connected to {host}:{port}."); 
+        await HandleConnectionChange(socket is { Connected: true }, cancellationToken);
+    }
+
+    private void ClearBuffer()
     {
         try
         {
@@ -191,13 +220,17 @@ public sealed class TcpConnection : IDisposable
         }
     }
     
-    public async Task<string> SendCommand(string commandStr)
+    public async Task<string> SendCommand(string commandStr, CancellationToken cancellationToken)
     {
         while (true)
         {
+            await GetConnectionSemaphore(cancellationToken);
             try
             {
                 var commandBytes = Encoding.ASCII.GetBytes(commandStr);
+                await socketSendingSemaphore.WaitAsync(cancellationToken);
+                logger.LogInformation($"Sending command: {commandStr.Replace("\r", "\\r")}");
+                ClearBuffer();
                 socket.Send(commandBytes);
                 logger.LogInformation($"Sent command: {commandStr.Replace("\r", "\\r")}");
                 var bytesRead = socket.Receive(buffer);
@@ -205,30 +238,18 @@ public sealed class TcpConnection : IDisposable
                 logger.LogInformation($"Received response: {rawResponse.Replace("\r", "\\r")}");
                 return rawResponse;
             }
-            catch (SocketException)
+            catch (SocketException ex)
             {
-                await CreateNewSocket(host, port);
+                logger.LogError($"SocketException while sending command: {ex.Message}");
+                await CreateNewSocket(host, port, cancellationToken);
             }
-
-            await Task.Delay(100);
-        }
-    }
-    
-    private async void StartHeartbeatSender()
-    {
-        try
-        {
-            while (!socket.Connected)
+            finally
             {
-                var heartbeatMessage = Encoding.ASCII.GetBytes("PING\r");
-                socket.Send(heartbeatMessage);
-                logger.LogDebug("Sent heartbeat to keep connection alive.");
-                await Task.Delay(TimeSpan.FromSeconds(10), CancellationToken.None);
+                socketSendingSemaphore.Release();
+                ReleaseConnectionSemaphore();
             }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError($"Error while sending heartbeat: {ex.Message}");
+            
+            await Task.Delay(250, cancellationToken);
         }
     }
     

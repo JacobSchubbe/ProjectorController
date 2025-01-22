@@ -23,187 +23,121 @@
             Projector Power
           </label>
           <ToggleSwitch
-              :isChecked="state.ProjectorPoweredOn"
-              :disabled="buttonDisabledPowerButton"
+              :isChecked="state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.On"
+              :disabled="powerToggleStatus === 'disabled'"
               @update:isChecked="handlePowerToggle"
+              :class="{
+                'power-toggle-disabled': powerToggleStatus === 'disabled',
+                'power-toggle-off': powerToggleStatus === 'off',
+                'power-toggle-on': powerToggleStatus === 'on'
+              }"
           />
         </div>
       </div>
     </div>
-    <div class="projector-controls">
-      <div class="control-row">
 
-        <ControlButton
-            :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_BACK)"
-        >
-          Back
-        </ControlButton>
-        
-        <ControlButton
-            :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_UP)"
-        >
-          Up
-        </ControlButton>
-        
-        <ControlButton
-            :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_HOME)"
-        >
-          Home
-        </ControlButton>
-      </div>
-      
-      <div class="control-row">
-        <ControlButton
-            :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_LEFT)"
-        >
-          Left
-        </ControlButton>
+    <!-- Tab Content Section -->
+    <div class="tab-content">
+      <AdbKeyCodesTab
+          v-if="selectedTab === 'adb'"
+          :buttonDisabled="buttonDisabledWhenPowerOff"
+          :handleClick="handleClickAndroidCommand"
+      />
+      <AndroidAppsTab
+          v-if="selectedTab === 'apps'"
+          :disabled="buttonDisabledWhenPowerOff"
+          :buttonDisabled="buttonDisabledWhenPowerOff"
+          :handleClick="handleClickAndroidOpenAppCommand"
+          :apps="availableApps"
+      />
+      <TvCommandsTab
+          v-if="selectedTab === 'tv'"
+          :handleClick="handleClickTVCommand"
+      />
+    </div>
 
-        <ControlButton
-            styleClass="control-button enter-button"
-            :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_ENTER)"
-        >
-          Enter
-        </ControlButton>
-
-        <ControlButton
-            :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_RIGHT)"
-        >
-          Right
-        </ControlButton>
-      </div>
-      
-      <div class="control-row">
-        <ControlButton
-            :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickAndroidCommand(adbConstants.KeyCodes.KEYCODE_DPAD_DOWN)"
-        >
-          Down
-        </ControlButton>
-      </div>
-      
-      <div class="control-row">
-        <ControlButton
-            :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeDown)"
-        >
-          Volume<br/><br/>-
-        </ControlButton>
+    <!-- Tab Navigation Section -->
+    <div class="tab-container">
+      <div class="volume-row">
         <ControlButton
             :disabled="buttonDisabledWhenPowerOff"
             :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeUp)"
+            class="volume-button"
         >
           Volume<br/><br/>+
         </ControlButton>
-      </div>
-
-      <!-- Media Controls -->
-      <div class="control-row">
-        <MediaButton
-            icon="/assets/netflix-logo.png"
-            class="control-button media-button"
-            alt="Netflix"
-            :onClick="() => handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.Netflix)"
+        <ControlButton
             :disabled="buttonDisabledWhenPowerOff"
-        />
-        <MediaButton
-            icon="/assets/youtube-logo.png"
-            class="control-button media-button"
-            alt="YouTube"
-            :onClick="() => handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.Youtube)"
-            :disabled="buttonDisabledWhenPowerOff"
-        />
-      </div>
-      <div class="control-row">
-        <MediaButton
-            icon="/assets/prime-video-logo.png"
-            class="control-button media-button"
-            alt="PrimeVideo"
-            :onClick="() => handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.AmazonPrime)"
-            :disabled="buttonDisabledWhenPowerOff"
-        />
-        <MediaButton
-            icon="/assets/disney-logo.jpg"
-            class="control-button media-button"
-            alt="DisneyPlus"
-            :onClick="() => handleClickAndroidOpenAppCommand(adbConstants.KeyCodes.DisneyPlus)"
-            :disabled="buttonDisabledWhenPowerOff"
-        />
-      </div>
-      <div class="control-row">
-        <ControlButton
-            :onClick="() => handleClickTVCommand(tvConstants.IRCommands.BTN_DPAD_UP)"
+            :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeDown)"
+            class="volume-button"
         >
-          Up
+          Volume<br/><br/>-
         </ControlButton>
       </div>
-      <div class="control-row">
-        <ControlButton
-            :onClick="() => handleClickTVCommand(tvConstants.IRCommands.BTN_DPAD_LEFT)"
+      <div class="tab-row">
+        <button
+            v-for="tab in tabs"
+            :key="tab.value"
+            :class="{ active: selectedTab === tab.value }"
+            @click="selectedTab = tab.value"
+            class="tab-button"
         >
-          Left
-        </ControlButton>
-        <ControlButton
-            :onClick="() => handleClickTVCommand(tvConstants.IRCommands.KEY_POWER)"
-        >
-          TV Power
-        </ControlButton>
-        <ControlButton
-            :onClick="() => handleClickTVCommand(tvConstants.IRCommands.BTN_DPAD_RIGHT)"
-        >
-          Right
-        </ControlButton>
+          <i :class="tab.icon"></i> <!-- Add icon based on tab value -->
+          <span>{{ tab.label }}</span>
+        </button>
       </div>
-      <div class="control-row">
-        <ControlButton
-            :onClick="() => handleClickTVCommand(tvConstants.IRCommands.BTN_DPAD_DOWN)"
-        >
-          Down
-        </ControlButton>
-      </div>
-      
     </div>
+
   </div>
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { SignalRInstance } from "./SignalRServiceManager";
-import * as adbConstants from "./Constants/AdbConstants";
 import * as projectorConstants from "./Constants/ProjectorConstants";
-import * as tvConstants from "./Constants/TVConstants";
 import Dropdown from "@/components/DropDown.vue";
-import ControlButton from "@/components/ControlButton.vue";
-import MediaButton from "@/components/MediaButton.vue";
-import { useProjector } from "@/composables/useProjector";
 import ToggleSwitch from "@/components/ToggleSwitch.vue";
+import ControlButton from "@/components/ControlButton.vue";
+import AdbKeyCodesTab from "@/Views/AndroidTVButtonLayout.vue";
+import AndroidAppsTab from "@/Views/AndroidAppsButtonLayout.vue";
+import TvCommandsTab from "@/Views/TVControlButtonLayout.vue";
+import { useProjector } from "@/composables/useProjector";
+import * as adbConstants from "@/Constants/AdbConstants";
 
 const {
   state,
-  buttonDisabledPowerButton,
   buttonDisabledWhenPowerOff,
   handleDropdownChange,
   handleClickProjectorCommands,
-  handleClickTVCommand,
   handleClickAndroidCommand,
   handleClickAndroidOpenAppCommand,
+  handleClickTVCommand,
+  handlePowerToggle,
   handleProjectorConnectionStateChange,
   handleAndroidTVConnectionStateChange,
   handleProjectorQueryResponse,
-  handleGUIConnectionStateChange,
-  handlePowerToggle
+  handleGUIConnectionStateChange
 } = useProjector();
 
 const inputOptions = [
   { label: "TV/Switch", value: projectorConstants.ProjectorCommands.SystemControlSourceHDMI1 },
   { label: "SmartTV", value: projectorConstants.ProjectorCommands.SystemControlSourceHDMI3 },
 ];
+
+const tabs = ref([
+  { label: "SmartTV", value: "adb", icon: "fas fa-keyboard" },
+  { label: "Apps", value: "apps", icon: "fas fa-tv" },
+  { label: "TV Commands", value: "tv", icon: "fas fa-remote" }
+]);
+
+const availableApps = ref([
+  { icon: "/assets/netflix-logo.png", alt: "Netflix", action: adbConstants.KeyCodes.Netflix },
+  { icon: "/assets/youtube-logo.png", alt: "YouTube", action: adbConstants.KeyCodes.Youtube },
+  { icon: "/assets/prime-video-logo.png", alt: "Prime Video", action: adbConstants.KeyCodes.AmazonPrime },
+  { icon: "/assets/disney-logo.jpg", alt: "Disney+", action: adbConstants.KeyCodes.DisneyPlus }
+]);
+
+const selectedTab = ref("adb");
 
 onMounted(async () => {
   await SignalRInstance.initialize(
@@ -239,9 +173,26 @@ const onTabFocused = () => {
   }
 };
 
+const powerToggleStatus = computed(() => {
+  if (!state.ProjectorConnected) {
+    return "disabled"; // Greyed out
+  } else if (!state.ProjectorPoweredOn) {
+    return "off"; // Red
+  } else {
+    return "on"; // Green
+  }
+});
+
 </script>
 
 <style>
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box; /* Consistent box model */
+}
 
 button {
   margin: 10px;
@@ -386,5 +337,173 @@ label {
   text-align: right; /* Align text within the container to the right */
   white-space: nowrap; /* Prevent text from wrapping unless desired */
 }
+
+.power-toggle-disabled .slider::before {
+  background-color: #666; /* Grey knob when disabled */
+}
+
+.power-toggle-off .slider::before {
+  background-color: #dc3545; /* Red knob when power is off */
+}
+
+.power-toggle-on .slider::before {
+  background-color: #28a745; /* Green knob when power is on */
+}
+
+/* Default slider (background) */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc; /* Default background (grey) */
+  transition: 0.4s;
+  border-radius: 34px; /* Makes slider background rounded */
+}
+
+/* Default toggle knob */
+.slider::before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white; /* Change this to adjust default knob color */
+  transition: 0.4s;
+  border-radius: 50%; /* Makes the knob round */
+}
+
+/* Slider background when checked */
+input:checked + .slider {
+  background-color: #28a745; /* Green background for toggle ON */
+}
+
+/* Knob (toggle) color when checked */
+input:checked + .slider::before {
+  background-color: white; /* Change this if you want the toggle knob to change color */
+}
+
+/* Slider background when disabled */
+input:disabled + .slider {
+  background-color: #ccc; /* Grey out the slider when disabled */
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Disabled knob (toggle) */
+input:disabled + .slider::before {
+  background-color: #666; /* Grey out the knob when disabled */
+}
+
+
+.tab-container {
+  animation: slideUp 0.6s ease-out; /* Slide-up animation when the component loads */
+  position: fixed; /* Keep the tabs pinned at the bottom */
+  bottom: 0; /* Align to the bottom of the page */
+  width: 100%; /* Full width */
+  display: flex;               /* Use flexbox */
+  flex-direction: column;      /* Stack rows vertically (column direction) */
+  align-items: stretch;        /* Stretch rows to fill available space */
+  justify-content: space-around; /* Equal space between buttons */
+  background: linear-gradient(90deg, #3a3a3a, #262626); /* Subtle gradient background */
+  border-top: 1px solid #444; /* Optional: Top border as a divider */
+  padding: 10px 0; /* Padding for better spacing */
+  z-index: 10; /* Ensure this section stays above other content */
+}
+
+.tab-button {
+  flex: 1; /* Equal size for every button */
+  text-align: center; /* Center-align button text */
+  color: #fff; /* White text color */
+  background: linear-gradient(145deg, #1c1c1e, #333333); /* Button gradient */
+  border: 1px solid #3d3d3d; /* Subtle border for separation */
+  border-radius: 10px; /* Rounded corners */
+  font-size: 16px; /* Readable font size */
+  font-weight: 600; /* Slightly bold text for better readability */
+  padding: 10px 0; /* Padding for the button text */
+  cursor: pointer; /* Indicate clickability */
+  transition: all 0.3s ease; /* Smooth animation on hover/focus */
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+}
+
+.tab-button.active {
+  background: linear-gradient(145deg, #007bff, #0056b3); /* Active button gradient */
+  border-color: #003580; /* Stronger border for visibility */
+  color: #fff; /* Ensure text is readable on the gradient */
+  box-shadow: 0px 4px 10px rgba(0, 123, 255, 0.5); /* Glow effect for active state */
+}
+
+.tab-button:hover {
+  background: linear-gradient(145deg, #3d3d3d, #555); /* Change on hover */
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.4); /* Slightly larger shadow on hover */
+  transform: scale(1.05); /* Add a slight scale effect for interaction feedback */
+}
+
+.tab-button:active {
+  transform: scale(0.95); /* Subtle shrink effect when clicking */
+  background: linear-gradient(145deg, #222, #444); /* Darker color for interaction feedback */
+}
+
+/* Volume Row */
+.volume-row {
+  display: flex;                      /* Use flexbox for horizontal alignment */
+  justify-content: center;            /* Center the volume buttons horizontally */
+  align-items: center;                /* Align buttons vertically */
+  gap: 15px;                          /* Space between Volume + and Volume - */
+  padding: 10px 0;                    /* Padding for the row */
+  border-bottom: 1px solid #666;      /* Divider between rows */
+  background-color: #383838;          /* Optional: background color for better visibility */
+}
+
+/* Tab Row */
+.tab-row {
+  display: flex;
+  justify-content: space-between;   /* Ensure buttons are spaced evenly */
+  align-items: center;
+  width: 100%;                      /* Full width of the row */
+  gap: 10px;                        /* Space between buttons */
+}
+
+/* Volume Button Styles */
+.volume-button {
+  background-color: #1c79cb; /* Match the active tab color */
+  color: white;             /* White text for contrast */
+  border: none;
+  padding: 10px 20px;                 /* Add padding for size */
+  border-radius: 8px;                 /* Rounded corners */
+  font-size: 14px;                    /* Medium text size */
+  font-weight: bold;                  /* Make text bold */
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth hover effect */
+}
+
+/* Volume Button - Hover Effect */
+.volume-button:hover {
+  background-color: #0056b3; /* Slightly darker shade on hover, similar to active tab hover */
+  transform: translateY(-2px); /* Lift the button slightly */
+}
+
+/* Responsive Font Size for Smaller Screens */
+@media (max-width: 768px) {
+  .tab-button {
+    font-size: 14px; /* Reduce font size slightly on smaller devices */
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%); /* Start just below the viewport */
+    opacity: 0; /* Start invisible */
+  }
+  to {
+    transform: translateY(0); /* End in the default position */
+    opacity: 1; /* Fully visible */
+  }
+}
+
+
 
 </style>
