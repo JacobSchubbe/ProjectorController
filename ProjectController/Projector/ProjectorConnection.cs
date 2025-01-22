@@ -26,14 +26,13 @@ public class ProjectorConnection
         commandRunner.PreCommandEvent += async cancellationToken =>
         {
             await this.tcpConnection.CheckConnection(cancellationToken);
-            this.tcpConnection.ClearBuffer();
         };
         Start().Wait();
     }
 
     private async Task Start()
     {
-        await tcpConnection.Start(ProjectorHost, ProjectorPort);
+        await tcpConnection.Initialize(ProjectorHost, ProjectorPort);
         await commandRunner.Start(SendCommand);
     }
 
@@ -83,7 +82,7 @@ public class ProjectorConnection
     {
         var commandStr = command != ProjectorCommands.SystemControlStartCommunication ? 
             $"{ProjectorCommandsDictionary[command]}\r" : $"{ProjectorCommandsDictionary[command]}";
-        return await tcpConnection.SendCommand(commandStr);
+        return await tcpConnection.SendCommand(commandStr, CancellationToken.None);
     }
     
     private async Task SendCommandResponseToClients(ProjectorCommands commandType, string response)

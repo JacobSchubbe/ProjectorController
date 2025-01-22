@@ -1,4 +1,5 @@
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using Serilog.Formatting.Json;
 
@@ -19,8 +20,21 @@ public class ConfigureSerilog
                 rollOnFileSizeLimit: true, // Create a new file when size limit is reached
                 retainedFileCountLimit: 5 // Optional: Keep only the latest 5 files
             )
+            .Enrich.With(new CallStackEnricher()) // Add the CallStackEnricher
             .CreateLogger();
         
         builder.Host.UseSerilog();
+    }
+}
+
+public class CallStackEnricher : ILogEventEnricher
+{
+    public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
+    {
+        // Get the current stack trace
+        var callStack = Environment.StackTrace;
+
+        // Add the stack trace as a property to the log event
+        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("CallStack", callStack));
     }
 }

@@ -23,9 +23,14 @@
             Projector Power
           </label>
           <ToggleSwitch
-              :isChecked="state.ProjectorPoweredOn"
-              :disabled="buttonDisabledPowerButton"
+              :isChecked="state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.On"
+              :disabled="powerToggleStatus === 'disabled'"
               @update:isChecked="handlePowerToggle"
+              :class="{
+                'power-toggle-disabled': powerToggleStatus === 'disabled',
+                'power-toggle-off': powerToggleStatus === 'off',
+                'power-toggle-on': powerToggleStatus === 'on'
+              }"
           />
         </div>
       </div>
@@ -53,26 +58,46 @@
 
     <!-- Tab Navigation Section -->
     <div class="tab-container">
-      <button
-          v-for="tab in tabs"
-          :key="tab.value"
-          :class="{ active: selectedTab === tab.value }"
-          @click="selectedTab = tab.value"
-          class="tab-button"
-      >
-        <i :class="tab.icon"></i> <!-- Add icon based on tab value -->
-        <span>{{ tab.label }}</span>
-      </button>    </div>
+      <div class="volume-row">
+        <ControlButton
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeUp)"
+            class="volume-button"
+        >
+          Volume<br/><br/>+
+        </ControlButton>
+        <ControlButton
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeDown)"
+            class="volume-button"
+        >
+          Volume<br/><br/>-
+        </ControlButton>
+      </div>
+      <div class="tab-row">
+        <button
+            v-for="tab in tabs"
+            :key="tab.value"
+            :class="{ active: selectedTab === tab.value }"
+            @click="selectedTab = tab.value"
+            class="tab-button"
+        >
+          <i :class="tab.icon"></i> <!-- Add icon based on tab value -->
+          <span>{{ tab.label }}</span>
+        </button>
+      </div>
+    </div>
 
   </div>
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { SignalRInstance } from "./SignalRServiceManager";
 import * as projectorConstants from "./Constants/ProjectorConstants";
 import Dropdown from "@/components/DropDown.vue";
 import ToggleSwitch from "@/components/ToggleSwitch.vue";
+import ControlButton from "@/components/ControlButton.vue";
 import AdbKeyCodesTab from "@/Views/AndroidTVButtonLayout.vue";
 import AndroidAppsTab from "@/Views/AndroidAppsButtonLayout.vue";
 import TvCommandsTab from "@/Views/TVControlButtonLayout.vue";
@@ -81,9 +106,9 @@ import * as adbConstants from "@/Constants/AdbConstants";
 
 const {
   state,
-  buttonDisabledPowerButton,
   buttonDisabledWhenPowerOff,
   handleDropdownChange,
+  handleClickProjectorCommands,
   handleClickAndroidCommand,
   handleClickAndroidOpenAppCommand,
   handleClickTVCommand,
@@ -147,6 +172,16 @@ const onTabFocused = () => {
     SignalRInstance.queryForInitialConnectionStatuses();
   }
 };
+
+const powerToggleStatus = computed(() => {
+  if (!state.ProjectorConnected) {
+    return "disabled"; // Greyed out
+  } else if (!state.ProjectorPoweredOn) {
+    return "off"; // Red
+  } else {
+    return "on"; // Green
+  }
+});
 
 </script>
 
@@ -303,8 +338,65 @@ label {
   white-space: nowrap; /* Prevent text from wrapping unless desired */
 }
 
+.power-toggle-disabled .slider::before {
+  background-color: #666; /* Grey knob when disabled */
+}
 
+.power-toggle-off .slider::before {
+  background-color: #dc3545; /* Red knob when power is off */
+}
 
+.power-toggle-on .slider::before {
+  background-color: #28a745; /* Green knob when power is on */
+}
+
+/* Default slider (background) */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc; /* Default background (grey) */
+  transition: 0.4s;
+  border-radius: 34px; /* Makes slider background rounded */
+}
+
+/* Default toggle knob */
+.slider::before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white; /* Change this to adjust default knob color */
+  transition: 0.4s;
+  border-radius: 50%; /* Makes the knob round */
+}
+
+/* Slider background when checked */
+input:checked + .slider {
+  background-color: #28a745; /* Green background for toggle ON */
+}
+
+/* Knob (toggle) color when checked */
+input:checked + .slider::before {
+  background-color: white; /* Change this if you want the toggle knob to change color */
+}
+
+/* Slider background when disabled */
+input:disabled + .slider {
+  background-color: #ccc; /* Grey out the slider when disabled */
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Disabled knob (toggle) */
+input:disabled + .slider::before {
+  background-color: #666; /* Grey out the knob when disabled */
+}
 
 
 .tab-container {
@@ -312,7 +404,9 @@ label {
   position: fixed; /* Keep the tabs pinned at the bottom */
   bottom: 0; /* Align to the bottom of the page */
   width: 100%; /* Full width */
-  display: flex; /* Use flexbox to align buttons */
+  display: flex;               /* Use flexbox */
+  flex-direction: column;      /* Stack rows vertically (column direction) */
+  align-items: stretch;        /* Stretch rows to fill available space */
   justify-content: space-around; /* Equal space between buttons */
   background: linear-gradient(90deg, #3a3a3a, #262626); /* Subtle gradient background */
   border-top: 1px solid #444; /* Optional: Top border as a divider */
@@ -353,6 +447,45 @@ label {
   background: linear-gradient(145deg, #222, #444); /* Darker color for interaction feedback */
 }
 
+/* Volume Row */
+.volume-row {
+  display: flex;                      /* Use flexbox for horizontal alignment */
+  justify-content: center;            /* Center the volume buttons horizontally */
+  align-items: center;                /* Align buttons vertically */
+  gap: 15px;                          /* Space between Volume + and Volume - */
+  padding: 10px 0;                    /* Padding for the row */
+  border-bottom: 1px solid #666;      /* Divider between rows */
+  background-color: #383838;          /* Optional: background color for better visibility */
+}
+
+/* Tab Row */
+.tab-row {
+  display: flex;
+  justify-content: space-between;   /* Ensure buttons are spaced evenly */
+  align-items: center;
+  width: 100%;                      /* Full width of the row */
+  gap: 10px;                        /* Space between buttons */
+}
+
+/* Volume Button Styles */
+.volume-button {
+  background-color: #1c79cb; /* Match the active tab color */
+  color: white;             /* White text for contrast */
+  border: none;
+  padding: 10px 20px;                 /* Add padding for size */
+  border-radius: 8px;                 /* Rounded corners */
+  font-size: 14px;                    /* Medium text size */
+  font-weight: bold;                  /* Make text bold */
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth hover effect */
+}
+
+/* Volume Button - Hover Effect */
+.volume-button:hover {
+  background-color: #0056b3; /* Slightly darker shade on hover, similar to active tab hover */
+  transform: translateY(-2px); /* Lift the button slightly */
+}
+
 /* Responsive Font Size for Smaller Screens */
 @media (max-width: 768px) {
   .tab-button {
@@ -370,5 +503,7 @@ label {
     opacity: 1; /* Fully visible */
   }
 }
+
+
 
 </style>
