@@ -73,6 +73,7 @@ public class CommandRunner<TCommands> where TCommands : Enum
                     {
                         logger.LogDebug("Checking for command to dequeue...");
                         dequeued = commandQueue.TryDequeue(out commandKvp);
+                        logger.LogDebug("Remaining queue: {commands}", string.Join(", ", commandQueue.Select(x => x.command.ToString())));
                     }
                     finally
                     {

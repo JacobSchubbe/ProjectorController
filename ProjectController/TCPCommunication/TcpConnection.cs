@@ -233,10 +233,7 @@ public sealed class TcpConnection : IDisposable
                 ClearBuffer();
                 socket.Send(commandBytes);
                 logger.LogInformation($"Sent command: {commandStr.Replace("\r", "\\r")}");
-                var bytesRead = socket.Receive(buffer);
-                var rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                logger.LogInformation($"Received response: {rawResponse.Replace("\r", "\\r")}");
-                return rawResponse;
+                return GetResponse(cancellationToken);
             }
             catch (SocketException ex)
             {
@@ -251,6 +248,14 @@ public sealed class TcpConnection : IDisposable
             
             await Task.Delay(250, cancellationToken);
         }
+    }
+
+    private string GetResponse(CancellationToken cancellationToken)
+    {
+        var bytesRead = socket.Receive(buffer);
+        var rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+        logger.LogInformation($"Received response: {rawResponse.Replace("\r", "\\r")}");
+        return rawResponse;
     }
     
     public void Dispose()

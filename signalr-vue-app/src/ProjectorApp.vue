@@ -10,12 +10,7 @@
             @change="handleDropdownChange"
         />
       </div>
-
-      <!-- Center Section (GUI Status) -->
-      <div class="header-item">
-        <label>GUI Connected: {{ state.GUIConnected }}</label>
-      </div>
-
+      
       <!-- Right Section (Projector Power Toggle) -->
       <div class="header-section">
         <div class="toggle-container">

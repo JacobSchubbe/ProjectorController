@@ -25,50 +25,50 @@ public class GUIHub : Hub
     
     public async Task IsConnectedToProjectorQuery()
     {
-        logger.LogInformation("Received: IsConnectedToProjectorQuery");
+          logger.LogTrace("Received: IsConnectedToProjectorQuery");
         await projectorConnection.SendIsConnectedToProjector();
     }
     
     public async Task IsConnectedToAndroidTVQuery()
     {
-        logger.LogInformation("Received: IsConnectedToAndroidTVQuery");
+          logger.LogTrace("Received: IsConnectedToAndroidTVQuery");
         await adbConnection.SendIsConnectedToProjector(adbConnection.IsConnected);
     }
     
     public async Task ReceiveProjectorCommand(ProjectorCommands command)
     {
-        logger.LogInformation($"Received projector command: {command.ToString()}");
+          logger.LogTrace($"Received projector command: {command.ToString()}");
         await projectorConnection.EnqueueCommand(command);
     }
     
     public async Task ReceiveProjectorQuery(ProjectorCommands command)
     {
-        logger.LogInformation($"Received projector query: {command.ToString()}");
+          logger.LogTrace($"Received projector query: {command.ToString()}");
         await projectorConnection.EnqueueQuery(command);
     }
     
     public Task ReceiveTVCommand(IRCommands command)
     {
-        logger.LogInformation($"Received TV command: {command.ToString()}");
+          logger.LogTrace($"Received TV command: {command.ToString()}");
         IRCommandManager.SendIRCommand(command);
         return Task.CompletedTask;
     }
     
     public async Task ReceiveAndroidCommand(KeyCodes command)
     {
-        logger.LogInformation($"Received android command: {command.ToString()}");
+          logger.LogTrace($"Received android command: {command.ToString()}");
         await adbConnection.EnqueueCommand(command);
     }
     
     public async Task ReceiveAndroidOpenAppCommand(KeyCodes command)
     {
-        logger.LogInformation($"Received open app command: {command.ToString()}");
+          logger.LogTrace($"Received open app command: {command.ToString()}");
         await adbConnection.EnqueueOpenAppCommand(command);
     }
     
     public async Task ReceiveAndroidQuery(KeyCodes command)
     {
-        logger.LogInformation($"Received android query: {command.ToString()}");
+          logger.LogTrace($"Received android query: {command.ToString()}");
         await adbConnection.EnqueueQuery(command);
     }
 }
