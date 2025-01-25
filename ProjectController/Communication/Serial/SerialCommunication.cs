@@ -1,4 +1,5 @@
 using System.IO.Ports;
+using System.Text;
 
 namespace ProjectController.Communication.Serial;
 
@@ -15,7 +16,7 @@ public class SerialCommunication
                 return Task.CompletedTask;
             serialPort = new SerialPort(portName, baudRate, parity, dataBits, stopBits);
             serialPort.Handshake = handshake; // Flow control
-            serialPort.ReadTimeout = 1000;    // Timeout in milliseconds
+            serialPort.ReadTimeout = 4000;    // Timeout in milliseconds
             serialPort.WriteTimeout = 1000;
             this.endOfLine = endOfLine;
 
@@ -34,7 +35,7 @@ public class SerialCommunication
         {
             Console.WriteLine($"Invalid operation: {e.Message}");
         }
-        catch (TimeoutException e)
+        catch (TimeoutException)
         {
             Console.WriteLine("The operation timed out.");
         }
@@ -46,6 +47,11 @@ public class SerialCommunication
         return Task.CompletedTask;
     }
 
+    public void WriteCommand(string command)
+    {
+        WriteCommand(Encoding.ASCII.GetBytes(command));
+    }
+    
     public void WriteCommand(byte[] command)
     {
         if (serialPort == null)
@@ -58,7 +64,13 @@ public class SerialCommunication
         Console.WriteLine($"Sent command: {command}");
     }
 
-    private byte[]? ReadResponse()
+    public string ReadResponseAsString()
+    {
+        var response = ReadResponseAsBytes();
+        return response == null ? string.Empty : Encoding.ASCII.GetString(response);
+    }
+    
+    public byte[]? ReadResponseAsBytes()
     {
         if (serialPort == null)
         {
