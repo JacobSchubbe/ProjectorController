@@ -37,6 +37,7 @@
           v-if="selectedTab === 'adb'"
           :buttonDisabled="buttonDisabledWhenPowerOff"
           :handleClick="handleClickAndroidCommand"
+          :availableHeight="availableHeight"
       />
       <AndroidAppsTab
           v-if="selectedTab === 'apps'"
@@ -44,10 +45,12 @@
           :buttonDisabled="buttonDisabledWhenPowerOff"
           :handleClick="handleClickAndroidOpenAppCommand"
           :apps="availableApps"
+          :availableHeight="availableHeight"
       />
       <TvCommandsTab
           v-if="selectedTab === 'tv'"
           :handleClick="handleClickTVCommand"
+          :availableHeight="availableHeight"
       />
     </div>
 
@@ -56,17 +59,17 @@
       <div class="volume-row">
         <ControlButton
             :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeUp)"
-            class="volume-button"
-        >
-          Volume<br/><br/>+
-        </ControlButton>
-        <ControlButton
-            :disabled="buttonDisabledWhenPowerOff"
             :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeDown)"
             class="volume-button"
         >
           Volume<br/><br/>-
+        </ControlButton>
+        <ControlButton
+            :disabled="buttonDisabledWhenPowerOff"
+            :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeUp)"
+            class="volume-button"
+        >
+          Volume<br/><br/>+
         </ControlButton>
       </div>
       <div class="tab-row">
@@ -98,6 +101,23 @@ import AndroidAppsTab from "@/Views/AndroidAppsButtonLayout.vue";
 import TvCommandsTab from "@/Views/TVControlButtonLayout.vue";
 import { useProjector } from "@/composables/useProjector";
 import * as adbConstants from "@/Constants/AdbConstants";
+
+// Reactive variable to store available height
+const availableHeight = ref(0);
+
+const calculateAvailableHeight = () => {
+  // Query the size of the top header and bottom tab menu
+  const header = document.querySelector(".header-container") as HTMLElement;
+  const tabContainer = document.querySelector(".tab-container") as HTMLElement;
+
+  // Calculate space between the menus
+  const totalHeight = window.innerHeight;
+  const headerHeight = header?.offsetHeight || 0;
+  const tabHeight = tabContainer?.offsetHeight || 0;
+
+  // Assign available height
+  availableHeight.value = totalHeight - headerHeight - tabHeight;
+};
 
 const {
   state,
@@ -135,6 +155,12 @@ const availableApps = ref([
 const selectedTab = ref("adb");
 
 onMounted(async () => {
+  calculateAvailableHeight();
+  window.addEventListener("resize", calculateAvailableHeight);
+  window.addEventListener("orientationchange", calculateAvailableHeight); // Handle rotation on mobile
+});
+
+onMounted(async () => {
   await SignalRInstance.initialize(
       (isConnected) => { handleProjectorConnectionStateChange(isConnected); },
       (isConnected) => { handleAndroidTVConnectionStateChange(isConnected); },
@@ -151,6 +177,11 @@ onMounted(() => {
 onUnmounted(() => {
   console.log("App unmounted. Removing tab focus listener.");
   window.removeEventListener("focus", onTabFocused);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", calculateAvailableHeight);
+  window.removeEventListener("orientationchange", calculateAvailableHeight);
 });
 
 const onTabFocused = () => {

@@ -21,7 +21,8 @@ import { defineProps } from "vue";
 defineProps({
   buttonDisabled: Boolean, // Passed down from the parent component
   handleClick: Function,   // Function to handle button clicks
-  apps: Array              // Array of app definitions (dynamically passed)
+  apps: Array,              // Array of app definitions (dynamically passed)
+  availableHeight: Number,
 });
 </script>
 
