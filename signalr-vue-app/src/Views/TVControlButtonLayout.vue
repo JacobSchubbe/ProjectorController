@@ -196,7 +196,12 @@ const buttonSize = computed(() => {
 </script>
 
 <style scoped>
-
+.control-row {
+  display: flex; /* Ensure buttons in the row are horizontally aligned */
+  justify-content: space-between; /* Space between buttons */
+  align-items: center; /* Align buttons vertically at the center */
+  margin-bottom: 3px; /* Add padding between rows */
+}
 .grid-container {
   display: grid;
   height: calc(100vh - 60px); /* Full height minus the bottom tab-container */
@@ -212,7 +217,8 @@ button,
 .ControlButton { /* If Buttons use a custom component */
   width: 100%; /* Buttons should fill their grid cell */
   height: 100%; /* Height matches the row height */
-  font-size: calc(0.3 * var(--buttonSize)); /* Scale font size relative to button size */
+  max-height: 4rem;
+  font-size: clamp(0.25rem, calc(0.3 * var(--buttonSize)), 1.3rem); /* Responsive and constrained */
   display: flex; /* Flexbox to align content */
   justify-content: center; /* Center-align text horizontally */
   align-items: center; /* Center-align text vertically */
