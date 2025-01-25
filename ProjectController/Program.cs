@@ -1,14 +1,16 @@
 ﻿using ProjectController;
-using ProjectController.ADB;
-using ProjectController.Projector;
+using ProjectController.Communication.Serial;
+using ProjectController.Communication.Tcp;
+using ProjectController.Controllers.ADB;
+using ProjectController.Controllers.Projector;
 using ProjectController.QueueManagement;
-using ProjectController.TCPCommunication;
 using Serilog;
-using static ProjectController.Projector.ProjectorConstants;
+using static ProjectController.Controllers.Projector.ProjectorConstants;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<TcpConnection>();
+builder.Services.AddSingleton<TcpCommunication>();
+builder.Services.AddSingleton<SerialCommunication>();
 builder.Services.AddSingleton<ADBClient>();
 builder.Services.AddSingleton<CommandRunner<ProjectorCommands>>();
 builder.Services.AddSingleton<CommandRunner<KeyCodes>>();

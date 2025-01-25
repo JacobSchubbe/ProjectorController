@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace ProjectController.TVControls;
+namespace ProjectController.Controllers.TVControls;
 
 public static class IRCommandManager
 {

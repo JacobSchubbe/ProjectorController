@@ -14,11 +14,9 @@
       </Content>
     </ItemGroup>
     <ItemGroup>
-      <Folder Include="SerialCommunication\" />
-    </ItemGroup>
-    <ItemGroup>
       <PackageReference Include="Serilog.AspNetCore" Version="6.0.0" />
       <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+      <PackageReference Include="System.IO.Ports" Version="6.0.0" />
     </ItemGroup>
     <ItemGroup>
       <None Update="ADB\Resources\Windows\adb.exe">

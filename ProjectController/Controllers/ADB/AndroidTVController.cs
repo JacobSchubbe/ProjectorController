@@ -1,4 +1,4 @@
-namespace ProjectController.ADB;
+namespace ProjectController.Controllers.ADB;
 
 public class AndroidTVController
 {

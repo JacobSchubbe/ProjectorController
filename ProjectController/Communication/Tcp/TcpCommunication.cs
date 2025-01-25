@@ -1,11 +1,11 @@
 using System.Net.Sockets;
 using System.Text;
 
-namespace ProjectController.TCPCommunication;
+namespace ProjectController.Communication.Tcp;
 
-public sealed class TcpConnection : IDisposable
+public sealed class TcpCommunication : IDisposable
 {
-    private readonly ILogger<TcpConnection> logger;
+    private readonly ILogger<TcpCommunication> logger;
     private Socket socket;
     
     private event Func<Task>? disconnectEvent;
@@ -19,7 +19,7 @@ public sealed class TcpConnection : IDisposable
     private readonly byte[] buffer = new byte[1024];
     private readonly byte ETX = Encoding.ASCII.GetBytes(":")[0];
     
-    public TcpConnection(ILogger<TcpConnection> logger)
+    public TcpCommunication(ILogger<TcpCommunication> logger)
     {
         this.logger = logger;
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);

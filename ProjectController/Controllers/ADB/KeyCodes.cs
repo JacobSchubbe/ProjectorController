@@ -1,4 +1,4 @@
-namespace ProjectController.ADB;
+namespace ProjectController.Controllers.ADB;
 
 /// <summary>
 /// Enum representing TV input key codes with their names and values.

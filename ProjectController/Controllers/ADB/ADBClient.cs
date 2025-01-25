@@ -3,7 +3,8 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using ProjectController.ADB;
+
+namespace ProjectController.Controllers.ADB;
 
 public class ADBClient
 {
