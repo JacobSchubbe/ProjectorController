@@ -19,12 +19,12 @@
           </label>
           <ToggleSwitch
               :isChecked="state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.On"
-              :disabled="powerToggleStatus === 'disabled'"
+              :disabled="state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.Pending"
               @update:isChecked="handlePowerToggle"
               :class="{
-                'power-toggle-disabled': powerToggleStatus === 'disabled',
-                'power-toggle-off': powerToggleStatus === 'off',
-                'power-toggle-on': powerToggleStatus === 'on'
+                'power-toggle-disabled': state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.Pending,
+                'power-toggle-off': state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.On,
+                'power-toggle-on': state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.Off
               }"
           />
         </div>
@@ -87,7 +87,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { SignalRInstance } from "./SignalRServiceManager";
 import * as projectorConstants from "./Constants/ProjectorConstants";
 import Dropdown from "@/components/DropDown.vue";
@@ -167,16 +167,6 @@ const onTabFocused = () => {
     SignalRInstance.queryForInitialConnectionStatuses();
   }
 };
-
-const powerToggleStatus = computed(() => {
-  if (!state.ProjectorConnected) {
-    return "disabled"; // Greyed out
-  } else if (!state.ProjectorPoweredOn) {
-    return "off"; // Red
-  } else {
-    return "on"; // Green
-  }
-});
 
 </script>
 

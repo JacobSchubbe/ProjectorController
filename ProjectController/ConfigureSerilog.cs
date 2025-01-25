@@ -10,6 +10,7 @@ public class ConfigureSerilog
     public static void Configure(WebApplicationBuilder builder)
     {
         Log.Logger = new LoggerConfiguration()
+            .ReadFrom.Configuration(builder.Configuration) // Reads logging level from environment variables
             .MinimumLevel.Verbose() // Ensure debug-level logs are captured
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning) // Capture only Warning and above for Microsoft libraries
             .WriteTo.Console() // Logs to the console

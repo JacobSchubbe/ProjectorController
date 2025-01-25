@@ -71,11 +71,6 @@ public class ProjectorConnection
     
     public async Task EnqueueQuery(ProjectorCommands command)
     {
-        if (command == ProjectorCommands.SystemControlPowerQuery)
-        {
-            logger.LogInformation("Sending query response for SystemControlPowerQuery: \"PWR=06:\"");
-            await SendQueryResponseToClients(command, "PWR=06\r:");
-        }
         
         await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
     }
@@ -102,6 +97,13 @@ public class ProjectorConnection
     {
         if (commandType == ProjectorCommands.SystemControlStartCommunication)
         {
+            if (string.IsNullOrEmpty(response))
+            {
+                logger.LogInformation($"Start communication failed.");
+                startCommunicationSent = false;
+                return;
+            }
+            
             logger.LogInformation($"Start communication acknowledged.");
             startCommunicationSent = true;
             return;
@@ -110,7 +112,7 @@ public class ProjectorConnection
         if (response == SuccessfulCommandResponse)
             response = $"Success! {response}";
         
-        logger.LogInformation($"Sending command response: {response.Replace("\r", "\\r")}");
+        logger.LogInformation($"Sending command response: {response}");
         await hub.Clients.All.SendAsync("ReceiveMessage", new
         {
             message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
@@ -119,7 +121,7 @@ public class ProjectorConnection
 
     private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
     {
-        logger.LogInformation($"Sending query response. Raw response: {rawResponse.Replace("\r", "\\r")}");
+        logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
         var status = StringToPowerStatus(rawResponse);
         if (status == null)
         {
