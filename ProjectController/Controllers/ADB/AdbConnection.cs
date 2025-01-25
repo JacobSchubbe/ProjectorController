@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
-using ProjectController.Projector;
+using ProjectController.Controllers.Projector;
 using ProjectController.QueueManagement;
 
-namespace ProjectController.ADB;
+namespace ProjectController.Controllers.ADB;
 
 public class AdbConnection
 {

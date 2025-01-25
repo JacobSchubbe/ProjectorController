@@ -14,11 +14,9 @@
       </Content>
     </ItemGroup>
     <ItemGroup>
-      <Folder Include="SerialCommunication\" />
-    </ItemGroup>
-    <ItemGroup>
       <PackageReference Include="Serilog.AspNetCore" Version="6.0.0" />
       <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+      <PackageReference Include="System.IO.Ports" Version="6.0.0" />
     </ItemGroup>
     <ItemGroup>
       <None Update="ADB\Resources\Windows\adb.exe">
@@ -97,6 +95,48 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
       <None Update="ADB\Resources\LinuxArm64\sqlite3">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\adb.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\AdbWinApi.dll">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\AdbWinUsbApi.dll">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\etc1tool.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\fastboot.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\hprof-conv.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\libwinpthread-1.dll">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\make_f2fs.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\make_f2fs_casefold.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\mke2fs.conf">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\mke2fs.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\NOTICE.txt">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\source.properties">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Controllers\ADB\Resources\Windows\sqlite3.exe">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>

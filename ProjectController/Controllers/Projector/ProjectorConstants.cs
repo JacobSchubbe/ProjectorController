@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace ProjectController.Projector;
+namespace ProjectController.Controllers.Projector;
 
 public static class ProjectorConstants
 {

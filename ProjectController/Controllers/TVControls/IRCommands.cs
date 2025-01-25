@@ -1,4 +1,4 @@
-namespace ProjectController.TVControls;
+namespace ProjectController.Controllers.TVControls;
 
 public enum IRCommands
 { 

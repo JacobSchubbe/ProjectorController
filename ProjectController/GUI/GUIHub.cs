@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
-using ProjectController.ADB;
-using ProjectController.Projector;
-using ProjectController.TVControls;
-using static ProjectController.Projector.ProjectorConstants;
+using ProjectController.Controllers.ADB;
+using ProjectController.Controllers.Projector;
+using ProjectController.Controllers.TVControls;
+using static ProjectController.Controllers.Projector.ProjectorConstants;
 
 public class GUIHub : Hub
 {

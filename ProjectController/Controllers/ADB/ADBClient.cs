@@ -3,7 +3,8 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using ProjectController.ADB;
+
+namespace ProjectController.Controllers.ADB;
 
 public class ADBClient
 {
@@ -21,7 +22,7 @@ public class ADBClient
     
     private const string ADB_PATH_LINUX_ARM64 = "adb";
     private static readonly string ADB_PATH_DEVELOPMENT =
-        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ADB", "Resources", "Windows", "adb.exe");
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Controllers", "ADB", "Resources", "Windows", "adb.exe");
     
     public ADBClient(Action<string> logger, bool verbose = false, bool showCommand = false)
     {

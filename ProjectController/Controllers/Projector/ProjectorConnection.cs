@@ -1,21 +1,21 @@
 using Microsoft.AspNetCore.SignalR;
+using ProjectController.Communication.Tcp;
 using ProjectController.QueueManagement;
-using ProjectController.TCPCommunication;
-using static ProjectController.Projector.ProjectorConstants;
+using static ProjectController.Controllers.Projector.ProjectorConstants;
 
-namespace ProjectController.Projector;
+namespace ProjectController.Controllers.Projector;
 
 public class ProjectorConnection
 {
     private readonly ILogger<ProjectorConnection> logger;
     private readonly IHubContext<GUIHub> hub;
-    private readonly TcpConnection tcpConnection;
+    private readonly TcpCommunication tcpConnection;
     private readonly CommandRunner<ProjectorCommands> commandRunner;
     private bool startCommunicationSent = false;
     
     public ProjectorConnection(ILogger<ProjectorConnection> logger, 
         IHubContext<GUIHub> hub, 
-        TcpConnection tcpConnection,
+        TcpCommunication tcpConnection,
         CommandRunner<ProjectorCommands> commandRunner)
     {
         this.logger = logger;
