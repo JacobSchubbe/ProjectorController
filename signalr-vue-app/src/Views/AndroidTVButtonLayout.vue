@@ -57,8 +57,11 @@ import * as adbConstants from "@/Constants/AdbConstants";
 import ControlButton from "@/components/ControlButton.vue";
 import { defineProps } from "vue";
 
-defineProps({
-  buttonDisabled: Boolean, // Passed down from the parent component
-  handleClick: Function     // Function to handle button clicks
-});
+defineProps<{
+  buttonDisabled: Boolean; // Passed down from the parent component
+  handleClick: () => void;     // Function to handle button clicks
+  availableHeight: number;
+}>();
+
+
 </script>

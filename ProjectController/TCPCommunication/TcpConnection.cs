@@ -46,22 +46,28 @@ public sealed class TcpConnection : IDisposable
     
     private async Task CreateNewSocket(string newHost, int newPort, CancellationToken cancellationToken)
     {
-        try
+        var retryCount = 0;
+        while (retryCount < 10)
         {
-            await DisposeExistingSocket(); // Dispose of any existing socket
-        
-            // Create and configure a new socket
-            logger.LogInformation($"Creating a new socket for {host}:{port}...");
-            host = newHost;
-            port = newPort;
-            socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            logger.LogInformation("New socket successfully created.");
-            await StartSocket(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            // Log full exception with stack trace for better diagnostics
-            logger.LogError(ex, $"Failed to create a new socket for {host}:{port}.");
+            try
+            {
+                await DisposeExistingSocket(); // Dispose of any existing socket
+            
+                // Create and configure a new socket
+                logger.LogInformation($"Creating a new socket for {host}:{port}...");
+                host = newHost;
+                port = newPort;
+                socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                logger.LogInformation("New socket successfully created.");
+                await StartSocket(cancellationToken);
+                return;
+            }
+            catch (Exception ex)
+            {
+                retryCount++;
+                logger.LogError(ex, $"Failed to create socket. Retrying in {retryCount * 1000}ms...");
+                await Task.Delay(retryCount * 1000, cancellationToken); // Exponential backoff
+            }
         }
     }
 
@@ -186,6 +192,7 @@ public sealed class TcpConnection : IDisposable
 
     private void ClearBuffer()
     {
+        logger.LogDebug("Clearing buffer...");
         try
         {
             // Ensure the socket is available and connected
@@ -196,22 +203,15 @@ public sealed class TcpConnection : IDisposable
             socket.Blocking = false;
 
             // Loop to read all available data
-            while (true)
+            while (socket.Available > 0)
             {
-                int bytesRead = socket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
-
-                // If no data is read, we assume the buffer is cleared
-                if (bytesRead == 0)
-                    break;
+                _ = socket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
             }
+            logger.LogDebug("Buffer cleared.");
         }
-        catch (SocketException ex)
+        catch (Exception ex)
         {
-            // Error code 10035 (WSAEWOULDBLOCK) means there is no data available.
-            if (ex.SocketErrorCode != SocketError.WouldBlock)
-            {
-                throw; // Re-throw other exceptions
-            }
+            logger.LogError(ex, "Unexpected error during buffer clearing.");
         }
         finally
         {
@@ -229,14 +229,11 @@ public sealed class TcpConnection : IDisposable
             {
                 var commandBytes = Encoding.ASCII.GetBytes(commandStr);
                 await socketSendingSemaphore.WaitAsync(cancellationToken);
-                logger.LogInformation($"Sending command: {commandStr.Replace("\r", "\\r")}");
+                logger.LogInformation($"Sending command: {commandStr}");
                 ClearBuffer();
                 socket.Send(commandBytes);
-                logger.LogInformation($"Sent command: {commandStr.Replace("\r", "\\r")}");
-                var bytesRead = socket.Receive(buffer);
-                var rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                logger.LogInformation($"Received response: {rawResponse.Replace("\r", "\\r")}");
-                return rawResponse;
+                logger.LogInformation($"Sent command: {commandStr}");
+                return GetResponse(cancellationToken);
             }
             catch (SocketException ex)
             {
@@ -251,6 +248,14 @@ public sealed class TcpConnection : IDisposable
             
             await Task.Delay(250, cancellationToken);
         }
+    }
+
+    private string GetResponse(CancellationToken cancellationToken)
+    {
+        var bytesRead = socket.Receive(buffer);
+        var rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+        logger.LogInformation($"Received response: {rawResponse}");
+        return rawResponse;
     }
     
     public void Dispose()

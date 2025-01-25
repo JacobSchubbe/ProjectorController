@@ -15,13 +15,12 @@
 <script lang="ts">
 
 import { defineComponent } from "vue";
-import * as projectorConstants from "@/Constants/ProjectorConstants";
 
 export default defineComponent({
   name: "ToggleSwitch",
   props: {
     isChecked: {
-      type: Number as () => projectorConstants.PowerStatusGui,
+      type: Boolean,
       required: true, // Ensures the checked state is passed
     },
     disabled: {
