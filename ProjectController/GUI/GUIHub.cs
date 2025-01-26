@@ -7,10 +7,10 @@ using static ProjectController.Controllers.Projector.ProjectorConstants;
 public class GUIHub : Hub
 {
     private readonly ILogger<GUIHub> logger;
-    private readonly ProjectorConnection projectorConnection;
-    private readonly AdbConnection adbConnection;
+    private readonly ProjectorController projectorConnection;
+    private readonly AndroidTVController adbConnection;
     
-    public GUIHub(ILogger<GUIHub> logger, ProjectorConnection projectorConnection, AdbConnection adbConnection)
+    public GUIHub(ILogger<GUIHub> logger, ProjectorController projectorConnection, AndroidTVController adbConnection)
     {
         this.logger = logger;
         this.projectorConnection = projectorConnection;

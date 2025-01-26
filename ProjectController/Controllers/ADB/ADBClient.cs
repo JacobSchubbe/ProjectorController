@@ -8,9 +8,7 @@ namespace ProjectController.Controllers.ADB;
 
 public class ADBClient
 {
-    private readonly Action<string> logger;
-    private readonly bool _verbose;
-    private readonly bool _showCommand;
+    private readonly ILogger<ADBClient> logger;
     private readonly List<string> _devices;
     private string? _selectedDevice;
     // private Process? _serverProcess;
@@ -24,11 +22,9 @@ public class ADBClient
     private static readonly string ADB_PATH_DEVELOPMENT =
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Controllers", "ADB", "Resources", "Windows", "adb.exe");
     
-    public ADBClient(Action<string> logger, bool verbose = false, bool showCommand = false)
+    public ADBClient(ILogger<ADBClient> logger)
     {
         this.logger = logger;
-        _verbose = verbose;
-        _showCommand = showCommand;
         _devices = new List<string>();
         Log("ADB client initialized.");
     }
@@ -116,11 +112,8 @@ public class ADBClient
             adbCommand += $"-s {_selectedDevice} ";
         }
         adbCommand += command;
-
-        if (_verbose && _showCommand)
-        {
-            Log($"Executing command: {adbCommand}");
-        }
+        
+        Log($"Executing command: {adbCommand}");
 
         var process = new Process { StartInfo = new ProcessStartInfo
             {
@@ -198,7 +191,7 @@ public class ADBClient
     
     private void Log(string message)
     {
-        Console.WriteLine(message);
+        logger.LogDebug(message);
     }
     
     public async Task<bool> Connect(string ip, CancellationToken cancellationToken = default)

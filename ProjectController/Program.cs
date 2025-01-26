@@ -14,9 +14,9 @@ builder.Services.AddSingleton<SerialCommunication>();
 builder.Services.AddSingleton<ADBClient>();
 builder.Services.AddSingleton<CommandRunner<ProjectorCommands>>();
 builder.Services.AddSingleton<CommandRunner<KeyCodes>>();
+builder.Services.AddSingleton<AdbController>();
+builder.Services.AddSingleton<ProjectorController>();
 builder.Services.AddSingleton<AndroidTVController>();
-builder.Services.AddSingleton<ProjectorConnection>();
-builder.Services.AddSingleton<AdbConnection>();
 
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
 if (allowedOrigins == null)
@@ -55,58 +55,3 @@ app.UseCors(); // Add this before UseEndpoints
 app.MapHub<GUIHub>("/GUIHub");
 
 app.Run();
-
-// #region Proxy Port (Windows only!)
-//
-// void ConfigurePortProxy()
-// {
-//     var netshCommand = "netsh interface portproxy add v4tov4 listenport=8081 connectaddress=192.168.0.153 connectport=8080";
-//     ProcessNetshCommand(netshCommand);
-// }
-//
-// void RemovePortProxy()
-// {
-//     var netshCommand = "netsh interface portproxy delete v4tov4 listenport=8081";
-//     ProcessNetshCommand(netshCommand);
-// }
-//
-// void ProcessNetshCommand(string psCommand)
-// {
-//     Log.Debug("netsh: " + psCommand);
-//     try
-//     {
-//         var startInfo = new ProcessStartInfo
-//         {
-//             FileName = "powershell",
-//             Arguments = psCommand,
-//             Verb = "runas", // Elevate to admin
-//             RedirectStandardOutput = true,
-//             RedirectStandardError = true,
-//             UseShellExecute = false,
-//             CreateNoWindow = true
-//         };
-//
-//         using var process = Process.Start(startInfo);
-//
-//         string output = process?.StandardOutput.ReadToEnd().Trim();
-//         string error = process?.StandardError.ReadToEnd().Trim();
-//
-//         process?.WaitForExit();
-//
-//         if (!string.IsNullOrEmpty(output))
-//         {
-//             Log.Debug("PowerShell Output: " + output);
-//         }
-//
-//         if (!string.IsNullOrEmpty(error))
-//         {
-//             Log.Debug("PowerShell Error: " + error);
-//         }
-//     }
-//     catch (Exception ex)
-//     {
-//         Log.Debug($"Error running PowerShell command: {ex.Message}");
-//     }
-// }
-//
-// #endregion
