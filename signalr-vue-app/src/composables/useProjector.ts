@@ -113,9 +113,9 @@ export function useProjector() {
     console.log(`TV Command sent: ${command}`);
   }
 
-  const handleClickAndroidCommand = async (command: adbConstants.KeyCodes) => {
-    SignalRInstance.sendAndroidCommand(command);
-    console.log(`Android Command sent: ${command}`);
+  const handleClickAndroidCommand = async (command: adbConstants.KeyCodes, isLongPress: boolean) => {
+    SignalRInstance.sendAndroidCommand(command, isLongPress);
+    console.log(`Android Command sent: ${command}, IsLongPress: ${isLongPress}`);
   }
 
   const handleClickAndroidOpenAppCommand = async (command: adbConstants.KeyCodes) => {

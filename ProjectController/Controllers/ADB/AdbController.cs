@@ -10,6 +10,7 @@ public class AdbController
     {
         this.logger = logger;
         AdbClient = adbClient;
+        _ = AdbClient.DetectConnectionChange(Ip, CancellationToken.None);
     }
 
     private void Log(string message)
@@ -20,7 +21,6 @@ public class AdbController
     public async Task<bool> Connect(CancellationToken cancellationToken = default)
     {
         Log($"Connecting to {Ip}...");
-        _ = AdbClient.DetectConnectionChange(Ip, cancellationToken);
         var result = await AdbClient.Connect(Ip, cancellationToken);
         Log(result ? $"Connected successfully to {Ip}." : $"Connection failed to {Ip}.");
         return result;
@@ -31,6 +31,52 @@ public class AdbController
         var status = AdbClient.IsConnected(Ip);
         Log($"AndroidTV Connection status: {status}");
         return status;
+    }
+
+    public bool StartVpn()
+    {
+        var adbCommand = "monkey -p com.surfshark.vpnclient.android -c android.intent.category.LAUNCHER 1";
+        var output = AdbClient.ExecuteShellCommand(adbCommand);
+        Log(output);
+        return true;
+    }
+    
+    public void StopVpn()
+    {
+        ForceStopApp(AndroidTVApps.Surfshark);
+    }
+
+    public void StopAllApps()
+    {
+        foreach (var app in Enum.GetValues<AndroidTVApps>())
+        {
+            ForceStopApp(app);
+        }
+    }
+    
+    public bool IsVpnConnected()
+    {
+        var adbCommand = "dumpsys connectivity | grep -i vpn";
+        try
+        {
+            // Execute the ADB command
+            var output = AdbClient.ExecuteShellCommand(adbCommand);
+            if (output.Contains("VPN CONNECTED") && output.Contains("IS_VPN"))
+            {
+                Log("A VPN connection is active, managed by Surfshark.");
+            }
+            else
+            {
+                Log("No active VPN connection found.");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle any errors
+            Log("An error occurred: " + ex.Message);
+        }
+
+        return false;
     }
 
     public ADBClient GetAdbClient()
@@ -121,17 +167,26 @@ public class AdbController
         { AndroidTVApps.YouTube, () => ExecuteOpenApp(AndroidTVApps.YouTube) },
         { AndroidTVApps.Netflix, () => ExecuteOpenApp(AndroidTVApps.Netflix) },
         { AndroidTVApps.AmazonPrime, () => ExecuteOpenApp(AndroidTVApps.AmazonPrime) },
-        { AndroidTVApps.WatchIt, () => ExecuteOpenApp(AndroidTVApps.WatchIt) },
-        { AndroidTVApps.Shahid, () => ExecuteOpenApp(AndroidTVApps.Shahid) },
-        { AndroidTVApps.DisneyPlus, () => ExecuteOpenApp(AndroidTVApps.DisneyPlus) }
+        { AndroidTVApps.DisneyPlus, () => ExecuteOpenApp(AndroidTVApps.DisneyPlus) },
+        { AndroidTVApps.Crunchyroll, () => ExecuteOpenApp(AndroidTVApps.Crunchyroll) },
+        { AndroidTVApps.Spotify, () => ExecuteOpenApp(AndroidTVApps.Spotify) },
+        { AndroidTVApps.Surfshark, () => ExecuteOpenApp(AndroidTVApps.Surfshark) },
     };
 
     private void ExecuteOpenApp(AndroidTVApps app)
     {
-        var packageActivity = app.GetPackageActivity(); // Use the GetPackageActivity extension method
-        var parts = packageActivity.Split('/'); // Split the package and activity strings
+        var packageActivity = app.GetPackageActivity();
+        var parts = packageActivity.Split('/');
         var package = parts[0];
         var activity = parts[1];
         AdbClient.StartApp(package, activity);
+    }
+
+    public void ForceStopApp(AndroidTVApps app)
+    {
+        var packageActivity = app.GetPackageActivity();
+        var parts = packageActivity.Split('/');
+        var package = parts[0];
+        AdbClient.StopApp(package);
     }
 }

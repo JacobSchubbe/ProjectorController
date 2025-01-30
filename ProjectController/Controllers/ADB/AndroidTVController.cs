@@ -57,6 +57,11 @@ public class AndroidTVController
         await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
     }
     
+    public async Task EnqueueLongPressCommand(KeyCodes command)
+    {
+        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+    }
+    
     public Task EnqueueOpenAppCommand(KeyCodes command)
     {
         var app = (command) switch
@@ -65,6 +70,9 @@ public class AndroidTVController
             KeyCodes.Youtube => AndroidTVApps.YouTube,
             KeyCodes.AmazonPrime => AndroidTVApps.AmazonPrime, 
             KeyCodes.DisneyPlus => AndroidTVApps.DisneyPlus, 
+            KeyCodes.Crunchyroll => AndroidTVApps.Crunchyroll,
+            KeyCodes.Surfshark => AndroidTVApps.Surfshark,
+            KeyCodes.Spotify => AndroidTVApps.Spotify,
             _ => throw new NotImplementedException()
         };
         
@@ -123,6 +131,7 @@ public class AndroidTVController
         }
         catch (Exception ex)
         {
+            logger.LogDebug("Error while sending command: {error}", ex.Message);
             return ex.Message;
         }
     }

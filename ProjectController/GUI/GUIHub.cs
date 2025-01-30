@@ -54,10 +54,20 @@ public class GUIHub : Hub
         return Task.CompletedTask;
     }
     
-    public async Task ReceiveAndroidCommand(KeyCodes command)
+    public async Task ReceiveAndroidCommand(KeyCodes command, bool isLongPress)
     {
-          logger.LogTrace($"Received android command: {command.ToString()}");
-        await adbConnection.EnqueueCommand(command);
+        logger.LogTrace($"Received android command: {command.ToString()} with LongPress: {isLongPress}");
+    
+        if (isLongPress)
+        {
+            // Handle long press logic
+            await adbConnection.EnqueueLongPressCommand(command);
+        }
+        else
+        {
+            // Handle regular short press
+            await adbConnection.EnqueueCommand(command);
+        }
     }
     
     public async Task ReceiveAndroidOpenAppCommand(KeyCodes command)

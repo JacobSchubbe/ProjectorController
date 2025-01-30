@@ -93,7 +93,7 @@ public class ADBClient
         throw new NotSupportedException("Unknown architecture.");
     }
     
-    private CommandSubprocess ExecuteCommand(string command, bool blocking = true, bool includeSelectedSerial = true)
+    private CommandSubprocess ExecuteCommand(string command, bool blocking = true, bool includeSelectedSerial = true, LogLevel logLevel = LogLevel.Debug)
     {
         var adbBasePath = GetMachineArchitecture() switch
         {
@@ -113,7 +113,7 @@ public class ADBClient
         }
         adbCommand += command;
         
-        Log($"Executing command: {adbCommand}");
+        Log($"Executing command: {adbCommand}", logLevel);
 
         var process = new Process { StartInfo = new ProcessStartInfo
             {
@@ -160,7 +160,7 @@ public class ADBClient
             {
                 Log($"Error in DetectConnectionChange: {ex.Message}");
             }
-            await Task.Delay(100, cancellationToken);
+            await Task.Delay(1000, cancellationToken);
         }
     }
 
@@ -169,7 +169,8 @@ public class ADBClient
         await connectionChangeCheckSemaphore.WaitAsync(cancellationToken);
         try
         {
-            var isConnected = IsConnected(ip);
+            GetDevices();
+            var isConnected = _selectedDevice != null && IsConnected(ip);
             if (isConnected != lastConnectionStatus)
             {
                 if (isConnected)
@@ -189,9 +190,32 @@ public class ADBClient
         }
     }
     
-    private void Log(string message)
+    private void Log(string message, LogLevel logLevel = LogLevel.Debug)
     {
-        logger.LogDebug(message);
+        switch (logLevel)
+        {
+            case LogLevel.Trace:
+                logger.LogTrace(message);
+                break;
+            case LogLevel.Debug:
+                logger.LogDebug(message);
+                break;
+            case LogLevel.Information:
+                logger.LogInformation(message);
+                break;
+            case LogLevel.Warning:
+                logger.LogWarning(message);
+                break;
+            case LogLevel.Error:
+                logger.LogError(message);
+                break;
+            case LogLevel.Critical:
+                logger.LogCritical(message);
+                break;
+            case LogLevel.None:
+            default:
+                break;
+        }
     }
     
     public async Task<bool> Connect(string ip, CancellationToken cancellationToken = default)
@@ -236,11 +260,7 @@ public class ADBClient
 
     public bool IsConnected(string ip)
     {
-        if (_devices.Any(device => device.StartsWith(ip)))
-        {
-            return true;
-        }
-        return false;
+        return _devices.Any(device => device.StartsWith(ip));
     }
 
     public bool Disconnect()
@@ -261,21 +281,22 @@ public class ADBClient
         }
     }
 
-    public List<string> GetDevices()
+    private List<string> GetDevices()
     {
-        Log("Getting connected devices...");
+        Log("Getting connected devices...", LogLevel.Trace);
         _devices.Clear();
-        var result = ExecuteCommand("devices -l", includeSelectedSerial: false);
+        _selectedDevice = null;
+        var result = ExecuteCommand("devices -l", includeSelectedSerial: false, logLevel: LogLevel.Trace);
 
-        string[] lines = ((string)result).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-        if (lines.Length > 1) // Skip the `List of devices` header.
+        var lines = ((string)result).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        
+        if (lines.Length <= 1) return _devices; // Skip the `List of devices` header.
+        
+        for (var i = 1; i < lines.Length; i++)
         {
-            for (var i = 1; i < lines.Length; i++)
-            {
-                var serial = lines[i].Split(' ')[0];
-                _devices.Add(serial);
-                Log($"Found device: {serial}");
-            }
+            var serial = lines[i].Split(' ')[0];
+            _devices.Add(serial);
+            Log($"Found device: {serial}", LogLevel.Trace);
         }
 
         return _devices;
@@ -473,6 +494,7 @@ public class ADBClient
             command += " --longpress";
         }
 
+        logger.LogDebug($"Sending key event: {command}");
         ExecuteShellCommand(command);
         return Task.CompletedTask;
     }
