@@ -313,4 +313,7 @@ export enum KeyCodes
     DisneyPlus = 10004,
     AppleTV = 10005,
     GoogleTV = 10006,
+    Crunchyroll = 10007,
+    Surfshark = 10008,
+    Spotify = 10009
 }

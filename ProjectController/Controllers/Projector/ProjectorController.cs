@@ -5,15 +5,15 @@ using static ProjectController.Controllers.Projector.ProjectorConstants;
 
 namespace ProjectController.Controllers.Projector;
 
-public class ProjectorConnection
+public class ProjectorController
 {
-    private readonly ILogger<ProjectorConnection> logger;
+    private readonly ILogger<ProjectorController> logger;
     private readonly IHubContext<GUIHub> hub;
     private readonly TcpCommunication tcpConnection;
     private readonly CommandRunner<ProjectorCommands> commandRunner;
     private bool startCommunicationSent = false;
     
-    public ProjectorConnection(ILogger<ProjectorConnection> logger, 
+    public ProjectorController(ILogger<ProjectorController> logger, 
         IHubContext<GUIHub> hub, 
         TcpCommunication tcpConnection,
         CommandRunner<ProjectorCommands> commandRunner)

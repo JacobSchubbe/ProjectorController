@@ -1,139 +1,138 @@
+using Microsoft.AspNetCore.SignalR;
+using ProjectController.Controllers.Projector;
+using ProjectController.QueueManagement;
+
 namespace ProjectController.Controllers.ADB;
 
 public class AndroidTVController
 {
-    private readonly ILogger<AndroidTVController> logger;
-    internal readonly ADBClient AdbClient;
-    internal readonly string Ip = "192.168.0.236:5555";
-    private readonly bool verbose = false;
-    private readonly bool showCommand = false;
-
-    public AndroidTVController(ILogger<AndroidTVController> logger)
+    private readonly ILogger<ProjectorController> logger;
+    private readonly IHubContext<GUIHub> hub;
+    private readonly AdbController adbController;
+    private readonly CommandRunner<KeyCodes> commandRunner;
+    private string ip => adbController.Ip;
+    public AndroidTVController(ILogger<ProjectorController> logger, IHubContext<GUIHub> hub, AdbController adbController, CommandRunner<KeyCodes> commandRunner)
     {
         this.logger = logger;
-        AdbClient = new ADBClient(Log, verbose, showCommand);
+        this.hub = hub;
+        this.adbController = adbController;
+        this.commandRunner = commandRunner;
+        _ = Start();
     }
 
-    private void Log(string message)
+    private async Task Start()
     {
-        logger.LogDebug(message);
-    }
-    
-    public async Task<bool> Connect(CancellationToken cancellationToken = default)
-    {
-        Log($"Connecting to {Ip}...");
-        _ = AdbClient.DetectConnectionChange(Ip, cancellationToken);
-        var result = await AdbClient.Connect(Ip, cancellationToken);
-        Log(result ? $"Connected successfully to {Ip}." : $"Connection failed to {Ip}.");
-        return result;
+        adbController.AdbClient.RegisterOnDisconnect(OnDisconnected);
+        adbController.AdbClient.RegisterOnConnect(OnConnected);
+        await commandRunner.Start(SendCommand);
+        await adbController.Connect(CancellationToken.None);
     }
     
-    public bool IsConnected()
+    private async Task OnConnected(string updatedIp)
     {
-        var status = AdbClient.IsConnected(Ip);
-        Log($"AndroidTV Connection status: {status}");
-        return status;
-    }
-
-    public ADBClient GetAdbClient()
-    {
-        return AdbClient;
+        if (ip != updatedIp)
+            return;
+        logger.LogInformation("Connected to AndroidTV.");
+        await SendIsConnectedToProjector(true);
     }
     
-    // Define the dictionary mapping KeyCodes to corresponding methods.
-    public Dictionary<KeyCodes, Func<Task>> KeyCommands => new()
+    private async Task OnDisconnected(string updatedIp)
     {
-        // Navigation Commands
-        { KeyCodes.KEYCODE_HOME, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_HOME) },
-        { KeyCodes.KEYCODE_TV, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV) },
-        { KeyCodes.KEYCODE_BACK, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_BACK) },
-        { KeyCodes.KEYCODE_DPAD_UP, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_UP) },
-        { KeyCodes.KEYCODE_DPAD_DOWN, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_DOWN) },
-        { KeyCodes.KEYCODE_DPAD_LEFT, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_LEFT) },
-        { KeyCodes.KEYCODE_DPAD_RIGHT, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_RIGHT) },
-        { KeyCodes.KEYCODE_ENTER, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_ENTER) },
+        if (ip != updatedIp)
+            return;
+        logger.LogInformation("Disconnected from AndroidTV.");
+        await SendIsConnectedToProjector(false);
+    }
+    
+    public bool IsConnected => adbController.IsConnected();
 
-        // Volume Commands
-        { KeyCodes.KEYCODE_VOLUME_UP, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_UP) },
-        { KeyCodes.KEYCODE_VOLUME_DOWN, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_DOWN) },
-        { KeyCodes.KEYCODE_VOLUME_MUTE, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_MUTE) },
+    public async Task SendIsConnectedToProjector(bool isConnected)
+    {
+        logger.LogInformation($"Sending IsConnectedToAndroidTVQuery: {isConnected}");
+        await hub.Clients.All.SendAsync("IsConnectedToAndroidTVQuery", isConnected);
+    }
 
-        // Power Commands
-        { KeyCodes.KEYCODE_POWER, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_POWER) },
-        { KeyCodes.KEYCODE_SLEEP, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_SLEEP) },
-        { KeyCodes.KEYCODE_SOFT_SLEEP, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_SOFT_SLEEP) },
-        { KeyCodes.KEYCODE_WAKEUP, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_WAKEUP) },
-
-        // Channel Commands
-        { KeyCodes.KEYCODE_CHANNEL_UP, async () => 
+    public async Task EnqueueCommand(KeyCodes command)
+    {
+        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+    }
+    
+    public async Task EnqueueLongPressCommand(KeyCodes command)
+    {
+        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+    }
+    
+    public Task EnqueueOpenAppCommand(KeyCodes command)
+    {
+        var app = (command) switch
         {
-            await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
-            await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_CHANNEL_UP);
-        }},
-        { KeyCodes.KEYCODE_CHANNEL_DOWN, async () =>
-        {
-            await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
-            await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_CHANNEL_DOWN);
-        }}
-    };
-    
-    // Method for channel numbers since it has special logic.
-    public void PressChannelNumber(string channelNumber)
-    {
-        var numbersKeyCodes = new Dictionary<char, KeyCodes>
-        {
-            { '0', KeyCodes.KEYCODE_0 },
-            { '1', KeyCodes.KEYCODE_1 },
-            { '2', KeyCodes.KEYCODE_2 },
-            { '3', KeyCodes.KEYCODE_3 },
-            { '4', KeyCodes.KEYCODE_4 },
-            { '5', KeyCodes.KEYCODE_5 },
-            { '6', KeyCodes.KEYCODE_6 },
-            { '7', KeyCodes.KEYCODE_7 },
-            { '8', KeyCodes.KEYCODE_8 },
-            { '9', KeyCodes.KEYCODE_9 }
+            KeyCodes.Netflix => AndroidTVApps.Netflix,
+            KeyCodes.Youtube => AndroidTVApps.YouTube,
+            KeyCodes.AmazonPrime => AndroidTVApps.AmazonPrime, 
+            KeyCodes.DisneyPlus => AndroidTVApps.DisneyPlus, 
+            KeyCodes.Crunchyroll => AndroidTVApps.Crunchyroll,
+            KeyCodes.Surfshark => AndroidTVApps.Surfshark,
+            KeyCodes.Spotify => AndroidTVApps.Spotify,
+            _ => throw new NotImplementedException()
         };
+        
+        adbController.OpenApp(app);
+        // await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        return Task.CompletedTask;
+    }
+    
+    public async Task EnqueueQuery(KeyCodes command)
+    {
+        await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
+    }
 
-        AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
+    private Task SendCommandResponseToClients(KeyCodes commandType, string response)
+    {
+        // logger.LogInformation($"Sending command response: {response}");
+        // await hub.Clients.All.SendAsync("ReceiveMessage", new
+        // {
+        //     message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
+        // });
+        return Task.CompletedTask;
+    }
 
-        foreach (var digit in channelNumber)
+    private Task SendQueryResponseToClients(KeyCodes queryType, string rawResponse)
+    {
+        // logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
+        // await hub.Clients.All.SendAsync("ReceiveMessage", new
+        // {
+        //     message = $"System Control Query: {queryType} was successfully executed. Response: {rawResponse}"
+        // });
+        return Task.CompletedTask;
+    }
+
+    private async Task<string> SendCommand(KeyCodes command)
+    {
+        if (!adbController.IsConnected())
         {
-            if (numbersKeyCodes.TryGetValue(digit, out var digitKeyCode))
+            var timeout = 3;
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout));
+            try
             {
-                AdbClient.SendKeyEventInput(digitKeyCode);
+                await adbController.Connect(cts.Token);
             }
+            catch (OperationCanceledException)
+            {
+                return $"Failed to connect to device after {timeout} seconds.";
+            }
+            
+            await SendIsConnectedToProjector(IsConnected);
         }
-    }
-    
-    
-    // App Commands
-    public void OpenApp(AndroidTVApps app)
-    {
-        if (AppCommands.TryGetValue(app, out var action))
-        {
-            action.Invoke();
-        }
-        else
-        {
-            Console.WriteLine($"App {app} is not mapped to any command.");
-        }
-    }
-    private Dictionary<AndroidTVApps, Action> AppCommands => new()
-    {
-        { AndroidTVApps.YouTube, () => ExecuteOpenApp(AndroidTVApps.YouTube) },
-        { AndroidTVApps.Netflix, () => ExecuteOpenApp(AndroidTVApps.Netflix) },
-        { AndroidTVApps.AmazonPrime, () => ExecuteOpenApp(AndroidTVApps.AmazonPrime) },
-        { AndroidTVApps.WatchIt, () => ExecuteOpenApp(AndroidTVApps.WatchIt) },
-        { AndroidTVApps.Shahid, () => ExecuteOpenApp(AndroidTVApps.Shahid) },
-        { AndroidTVApps.DisneyPlus, () => ExecuteOpenApp(AndroidTVApps.DisneyPlus) }
-    };
 
-    private void ExecuteOpenApp(AndroidTVApps app)
-    {
-        var packageActivity = app.GetPackageActivity(); // Use the GetPackageActivity extension method
-        var parts = packageActivity.Split('/'); // Split the package and activity strings
-        var package = parts[0];
-        var activity = parts[1];
-        AdbClient.StartApp(package, activity);
+        try
+        {
+            await adbController.KeyCommands[command]();
+            return "Success";
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug("Error while sending command: {error}", ex.Message);
+            return ex.Message;
+        }
     }
 }

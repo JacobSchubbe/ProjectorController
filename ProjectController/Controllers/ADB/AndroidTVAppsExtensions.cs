@@ -2,35 +2,13 @@ namespace ProjectController.Controllers.ADB;
 
 public enum AndroidTVApps
 {
-    /// <summary>
-    /// YouTube app for Android TV
-    /// </summary>
     YouTube,
-
-    /// <summary>
-    /// Netflix app for Android TV
-    /// </summary>
     Netflix,
-
-    /// <summary>
-    /// Amazon Prime Video app for Android TV
-    /// </summary>
     AmazonPrime,
-
-    /// <summary>
-    /// Watch It app for Android TV
-    /// </summary>
-    WatchIt,
-
-    /// <summary>
-    /// Shahid app for Android TV
-    /// </summary>
-    Shahid,
-
-    /// <summary>
-    /// Disney+ for Android TV
-    /// </summary>
-    DisneyPlus
+    DisneyPlus,
+    Crunchyroll,
+    Spotify,
+    Surfshark,
 }
 
 public static class AndroidTVAppsExtensions
@@ -47,9 +25,10 @@ public static class AndroidTVAppsExtensions
             AndroidTVApps.YouTube => "com.google.android.youtube.tv/com.google.android.apps.youtube.tv.activity.ShellActivity",
             AndroidTVApps.Netflix => "com.netflix.ninja/.MainActivity",
             AndroidTVApps.AmazonPrime => "com.amazon.amazonvideo.livingroom/com.amazon.ignition.IgnitionActivity",
-            AndroidTVApps.WatchIt => "com.watchit.vod/.refactor.splash.ui.SplashActivity",
-            AndroidTVApps.Shahid => "net.mbc.shahidTV/.MainActivity",
             AndroidTVApps.DisneyPlus => "com.disney.disneyplus/com.bamtechmedia.dominguez.main.MainActivity",
+            AndroidTVApps.Crunchyroll => "com.crunchyroll.crunchyroid/.main.ui.MainActivity",
+            AndroidTVApps.Spotify => "com.spotify.tv.android/.SpotifyTVActivity",
+            AndroidTVApps.Surfshark => "com.surfshark.vpnclient.android/.StartActivity",
             _ => throw new ArgumentOutOfRangeException(nameof(app), app, "Unknown app selected.")
         };
     }

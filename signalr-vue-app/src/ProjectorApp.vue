@@ -32,7 +32,7 @@
     </div>
 
     <!-- Tab Content Section -->
-    <div class="tab-content">
+    <div>
       <AdbKeyCodesTab
           v-if="selectedTab === 'adb'"
           :buttonDisabled="buttonDisabledWhenPowerOff"
@@ -149,7 +149,10 @@ const availableApps = ref([
   { icon: "/assets/netflix-logo.png", alt: "Netflix", action: adbConstants.KeyCodes.Netflix },
   { icon: "/assets/youtube-logo.png", alt: "YouTube", action: adbConstants.KeyCodes.Youtube },
   { icon: "/assets/prime-video-logo.png", alt: "Prime Video", action: adbConstants.KeyCodes.AmazonPrime },
-  { icon: "/assets/disney-logo.jpg", alt: "Disney+", action: adbConstants.KeyCodes.DisneyPlus }
+  { icon: "/assets/disney-logo.jpg", alt: "Disney+", action: adbConstants.KeyCodes.DisneyPlus },
+  { icon: "/assets/spotify-logo.png", alt: "Spotify", action: adbConstants.KeyCodes.Spotify },
+  { icon: "/assets/crunchyroll-logo.png", alt: "Crunchyroll", action: adbConstants.KeyCodes.Crunchyroll },
+  { icon: "/assets/surfshark-logo.svg", alt: "Surfshark", action: adbConstants.KeyCodes.Surfshark },
 ]);
 
 const selectedTab = ref("adb");
@@ -420,6 +423,8 @@ input:disabled + .slider::before {
   position: fixed; /* Keep the tabs pinned at the bottom */
   bottom: 0; /* Align to the bottom of the page */
   width: 100%; /* Full width */
+  max-width: 100%;
+  overflow: hidden;
   display: flex;               /* Use flexbox */
   flex-direction: column;      /* Stack rows vertically (column direction) */
   align-items: stretch;        /* Stretch rows to fill available space */

@@ -11,11 +11,13 @@ mkdir -p "$LOCAL_DEST"
 TODAY=$(date +"%Y-%m-%d")
 YESTERDAY=$(date -d "yesterday" +"%Y-%m-%d")
 
+#scp "${PI_USER}@${PI_HOST}:${PI_LOG_PATH}/*" "$LOCAL_DEST"
 scp "${PI_USER}@${PI_HOST}:${PI_LOG_PATH}/*${TODAY}*" "$LOCAL_DEST"
 scp "${PI_USER}@${PI_HOST}:${PI_LOG_PATH}/*${YESTERDAY}*" "$LOCAL_DEST"
 
-ssh "${PI_USER}@${PI_HOST}" << EOF
-    sudo rm -rf /home/logs/*
-    echo "Logs removed from the pi."
-EOF
+#ssh "${PI_USER}@${PI_HOST}" << EOF
+#    sudo rm -rf /home/logs/*${TODAY}*
+#    sudo rm -rf /home/logs/*${YESTERDAY}*
+#    echo "Logs removed from the pi."
+#EOF
 echo "Logs successfully extracted to $LOCAL_DEST"

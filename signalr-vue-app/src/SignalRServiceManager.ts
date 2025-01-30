@@ -196,9 +196,9 @@ class SignalRService {
         this.invoke('ReceiveTVCommand', command);
     }
 
-    sendAndroidCommand(command: adbConstants.KeyCodes): void {
-        console.log(`Sending AndroidTV command: ${command}`);
-        this.invoke('ReceiveAndroidCommand', command);
+    sendAndroidCommand(command: adbConstants.KeyCodes, isLongPress: boolean): void {
+        console.log(`Sending AndroidTV command: ${command} with long press: ${isLongPress}`);
+        this.invoke('ReceiveAndroidCommand', command, isLongPress);
     }
 
     sendAndroidOpenAppCommand(command: adbConstants.KeyCodes): void {
