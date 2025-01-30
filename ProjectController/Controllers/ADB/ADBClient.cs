@@ -170,7 +170,8 @@ public class ADBClient
         try
         {
             GetDevices();
-            var isConnected = _selectedDevice != null && IsConnected(ip);
+            _selectedDevice = _devices.FirstOrDefault(x => x.StartsWith(ip));
+            var isConnected = _selectedDevice != null;
             if (isConnected != lastConnectionStatus)
             {
                 if (isConnected)
@@ -234,8 +235,8 @@ public class ADBClient
                     if (result.Contains("connected"))
                     {
                         GetDevices();
-                        _selectedDevice = _devices[_devices.Count - 1];
-                        Log($"Device {_selectedDevice} connected successfully.");
+                        _selectedDevice = _devices.FirstOrDefault(x => x.StartsWith(ip));
+                        Log($"Device {_selectedDevice} connected successfully to {ip}.");
                         return true;
                     }
 
