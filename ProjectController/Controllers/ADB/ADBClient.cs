@@ -169,8 +169,7 @@ public class ADBClient
         await connectionChangeCheckSemaphore.WaitAsync(cancellationToken);
         try
         {
-            GetDevices();
-            _selectedDevice = _devices.FirstOrDefault(x => x.StartsWith(ip));
+            _selectedDevice = GetDevices().FirstOrDefault(x => x.StartsWith(ip));
             var isConnected = _selectedDevice != null;
             if (isConnected != lastConnectionStatus)
             {
