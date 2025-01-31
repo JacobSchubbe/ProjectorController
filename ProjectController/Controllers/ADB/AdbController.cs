@@ -20,10 +20,7 @@ public class AdbController
     
     public async Task<bool> Connect(CancellationToken cancellationToken = default)
     {
-        Log($"Connecting to {Ip}...");
-        var result = await AdbClient.Connect(Ip, cancellationToken);
-        Log(result ? $"Connected successfully to {Ip}." : $"Connection failed to {Ip}.");
-        return result;
+        return await AdbClient.Connect(Ip, cancellationToken);
     }
     
     public bool IsConnected()

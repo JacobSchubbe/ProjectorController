@@ -169,8 +169,8 @@ public class ADBClient
         await connectionChangeCheckSemaphore.WaitAsync(cancellationToken);
         try
         {
-            _selectedDevice = GetDevices().FirstOrDefault(x => x.StartsWith(ip));
-            var isConnected = _selectedDevice != null;
+            GetDevices();
+            var isConnected = IsConnected(ip);
             if (isConnected != lastConnectionStatus)
             {
                 if (isConnected)
@@ -248,8 +248,8 @@ public class ADBClient
                 }
             }
 
-            Log($"Already connected to device {_selectedDevice} with {ip}.");
             cancellationToken.ThrowIfCancellationRequested();
+            Log($"Already connected to device {_selectedDevice} with {ip}.");
             return true;
         }
         finally

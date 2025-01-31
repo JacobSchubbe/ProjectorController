@@ -32,7 +32,7 @@ public class GUIHub : Hub
     public async Task IsConnectedToAndroidTVQuery()
     {
           logger.LogTrace("Received: IsConnectedToAndroidTVQuery");
-        await adbConnection.SendIsConnectedToProjector(adbConnection.IsConnected);
+        await adbConnection.SendIsConnectedToAndroidTV(adbConnection.IsConnected);
     }
     
     public async Task ReceiveProjectorCommand(ProjectorCommands command)
