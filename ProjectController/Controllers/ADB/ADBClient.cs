@@ -170,6 +170,7 @@ public class ADBClient
         try
         {
             GetDevices();
+            _selectedDevice = _devices.FirstOrDefault(x => x.StartsWith(ip));
             var isConnected = IsConnected(ip);
             if (isConnected != lastConnectionStatus)
             {

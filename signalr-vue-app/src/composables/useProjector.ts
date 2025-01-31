@@ -7,6 +7,7 @@ import * as tvConstants from "@/Constants/TVConstants";
 export function useProjector() {
   const state = reactive({
     selectedInput: -1,
+    volume: 0,
     GUIConnected: false,
     ProjectorConnected: false,
     AndroidTVConnected: false,
@@ -70,6 +71,10 @@ export function useProjector() {
 
   const handleProjectorQueryResponse = (queryType:Number, currentStatus:Number) => {
     switch (queryType) {
+      case projectorConstants.ProjectorCommands.SystemControlVolumeQuery:
+        console.log(`Projector Volume query response: ${currentStatus}`);
+        state.volume = currentStatus as number;
+        break;
       case projectorConstants.ProjectorCommands.SystemControlSourceQuery:
         console.log(`Projector Source query response: ${currentStatus}`);
         state.selectedInput = currentStatus as projectorConstants.ProjectorCommands;

@@ -12,9 +12,7 @@ public class ProjectorController
     private readonly TcpCommunication tcpConnection;
     private readonly CommandRunner<ProjectorCommands> commandRunner;
     private bool startCommunicationSent = false;
-    private int targetVolume = 0;
-    private int currentVolume = 0;
-    private readonly SemaphoreSlim volumeUpdateSemaphore = new(1, 1);
+    private bool isInitialVolumeQueryOnConnected = false;
     
     public ProjectorController(ILogger<ProjectorController> logger, 
         IHubContext<GUIHub> hub, 
@@ -38,7 +36,7 @@ public class ProjectorController
     {
         await tcpConnection.Initialize(ProjectorHost, ProjectorPort);
         await commandRunner.Start(SendCommand);
-        // _ = UpdateVolumeRunner(CancellationToken.None);
+        _ = UpdateVolumeRunner(CancellationToken.None);
     }
 
     private async Task OnConnected()
@@ -47,6 +45,7 @@ public class ProjectorController
         await SendIsConnectedToProjector();
         await EnqueueCommand(ProjectorCommands.SystemControlStartCommunication);
         await EnqueueQuery(ProjectorCommands.SystemControlPowerQuery);
+        isInitialVolumeQueryOnConnected = true;
         await EnqueueQuery(ProjectorCommands.SystemControlVolumeQuery);
     }
     
@@ -65,19 +64,18 @@ public class ProjectorController
 
     private bool IsConnected => tcpConnection.IsConnected;
 
-    public async Task EnqueueCommand(ProjectorCommands command, bool duplicatesAllowed = false)
+    public async Task EnqueueCommand(ProjectorCommands command, bool allowDuplicates = false)
     {
         await commandRunner.EnqueueCommand(new[] { command }, async (commandType, response) =>
         {
             await UpdateAllClients(commandType);
             await SendCommandResponseToClients(commandType, response);
-        }, duplicatesAllowed);
+        }, allowDuplicates);
     }
     
-    public async Task EnqueueQuery(ProjectorCommands command)
+    public async Task EnqueueQuery(ProjectorCommands command, bool allowDuplicates = false)
     {
-        
-        await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients, allowDuplicates);
     }
     
     private async Task<string> SendCommand(ProjectorCommands command)
@@ -126,33 +124,42 @@ public class ProjectorController
 
     private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
     {
-        logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
-        var status = StringToPowerStatus(rawResponse);
-        if (status == null)
+        logger.LogInformation("Sending query response. QueryType: {$queryType} Raw response: {rawResponse}", queryType, rawResponse);
+        switch (queryType)
         {
-            rawResponse = rawResponse.Replace("=", " ").TrimEnd(':', '\r');
-            ProjectorCommands? currentStatus = null;
-            foreach (var kvp in ProjectorCommandsDictionary.Where(kvp => kvp.Value == rawResponse))
-            {
-                currentStatus = kvp.Key;
+            case ProjectorCommands.SystemControlVolumeQuery:
+                if (int.TryParse(rawResponse.Split('=')[1].TrimEnd(':', '\r'), out var rawVolume))
+                {
+                    await SetCurrentVolume(rawVolume);
+                    await SendQueryResponse(queryType, currentVolume);
+                }
                 break;
-            }
+            case ProjectorCommands.SystemControlPowerQuery:
+                var status = StringToPowerStatus(rawResponse);
+                logger.LogInformation($"Sending current status {status.ToString()} for query {queryType.ToString()}");
+                await SendQueryResponse(queryType, status);
+                break;
+            default:
+                rawResponse = rawResponse.Replace("=", " ").TrimEnd(':', '\r');
+                ProjectorCommands? currentStatus = null;
+                foreach (var kvp in ProjectorCommandsDictionary.Where(kvp => kvp.Value == rawResponse))
+                {
+                    currentStatus = kvp.Key;
+                    break;
+                }
 
-            if (!currentStatus.HasValue && queryType != ProjectorCommands.SystemControlPowerQuery)
-            {
-                logger.LogInformation($"No status matching current status: {rawResponse}");
-                return;
-            }
+                if (!currentStatus.HasValue && queryType != ProjectorCommands.SystemControlPowerQuery)
+                {
+                    logger.LogInformation($"No status matching current status: {rawResponse}");
+                    return;
+                }
 
-            logger.LogInformation(
-                $"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
-            await SendQueryResponse(queryType, currentStatus);
+                logger.LogInformation(
+                    $"Sending current status {currentStatus.ToString()} for query {queryType.ToString()}");
+                await SendQueryResponse(queryType, currentStatus);
+                break;
         }
-        else
-        {
-            logger.LogInformation($"Sending current status {status.ToString()} for query {queryType.ToString()}");
-            await SendQueryResponse(queryType, status);
-        }
+        
     }
 
     private async Task UpdateAllClients(ProjectorCommands commandType)
@@ -177,10 +184,37 @@ public class ProjectorController
         });
     }
 
-    public async Task SetVolume(int volume)
+    
+    
+    // TODO: Move to a separate class
+    
+    private int targetVolume = 0;
+    private int currentVolume = 0;
+    private const float MinVolume = 0;
+    private const float MaxVolume = 248;
+    private const float MaxDisplayVolume = 40;
+    private TaskCompletionSource waitingForVolumeUpdate = new();
+    private readonly SemaphoreSlim volumeUpdateSemaphore = new(1, 1);
+    
+    public async Task SetTargetVolume(int volume)
     {
         await volumeUpdateSemaphore.WaitAsync();
         targetVolume = volume;
+        logger.LogDebug("Target volume set: {targetVolume}", targetVolume);
+        volumeUpdateSemaphore.Release();
+    }
+    
+    public async Task SetCurrentVolume(int volume)
+    {
+        await volumeUpdateSemaphore.WaitAsync();
+        currentVolume = (int)Math.Round(volume / (MaxVolume - MinVolume) * MaxDisplayVolume + MinVolume, 0, MidpointRounding.AwayFromZero);
+        if (isInitialVolumeQueryOnConnected)
+        {
+            targetVolume = currentVolume;
+            isInitialVolumeQueryOnConnected = false;
+        }
+        logger.LogDebug("Current volume set: {currentVolume}", currentVolume);
+        waitingForVolumeUpdate.TrySetResult();
         volumeUpdateSemaphore.Release();
     }
     
@@ -188,21 +222,21 @@ public class ProjectorController
     {
         while (!token.IsCancellationRequested)
         {
+            await waitingForVolumeUpdate.Task;
             await volumeUpdateSemaphore.WaitAsync(token);
             try
             {
                 var volumeDiff = targetVolume - currentVolume;
                 if (volumeDiff == 0)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(50), token);
                     continue;
+                }
                 
                 var command = volumeDiff > 0 ? ProjectorCommands.SystemControlVolumeUp : ProjectorCommands.SystemControlVolumeDown;
-                for (var i = 0; i < Math.Abs(volumeDiff); i++)
-                {
-                    await EnqueueCommand(command, true);
-                }
-                currentVolume = targetVolume;
+                waitingForVolumeUpdate = new();
+                await EnqueueCommand(command, true);
                 await EnqueueQuery(ProjectorCommands.SystemControlVolumeQuery);
-                await Task.Delay(20, token);
             }
             finally
             {

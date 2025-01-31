@@ -37,7 +37,7 @@ public class GUIHub : Hub
 
     public async Task ReceiveProjectorVolumeSet(int volume)
     {
-        await projectorConnection.SetVolume(volume);
+        await projectorConnection.SetTargetVolume(volume);
     }
     
     public async Task ReceiveProjectorCommand(ProjectorCommands command)

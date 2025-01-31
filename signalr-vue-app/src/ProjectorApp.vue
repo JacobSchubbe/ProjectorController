@@ -58,7 +58,7 @@
     <div class="tab-container">
       <div class="volume-row">
         <VolumeSlider 
-          v-model="volume"
+          v-model="targetVolume"
           :isDisabled="buttonDisabledWhenPowerOff"
           :onVolumeChange="handleVolumeChange"
         />
@@ -95,11 +95,11 @@ import * as adbConstants from "@/Constants/AdbConstants";
 
 // Reactive variable to store available height
 const availableHeight = ref(0);
-const volume = ref(0); // Reactive volume state (initial value)
+const targetVolume = ref(0);
 
 const handleVolumeChange = (newVolume: number) => {
   console.log(`Volume updated: ${newVolume}`);
-  volume.value = newVolume;
+  targetVolume.value = newVolume;
   SignalRInstance.sendProjectorVolumeSet(newVolume);
 };
 
