@@ -120,6 +120,7 @@ class SignalRService {
 
     queryForInitialProjectorStatuses = () => {
         this.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlSourceQuery);
+        this.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlVolumeQuery);
     }
 
     queryForInitialAndroidTVStatuses = () => {
@@ -181,6 +182,11 @@ class SignalRService {
         this.invoke('IsConnectedToAndroidTVQuery');
     }
 
+    sendProjectorVolumeSet(volume: number): void {
+        console.log(`Sending projector volume set: ${volume}`);
+        this.invoke('ReceiveProjectorVolumeSet', volume);
+    }
+    
     sendProjectorCommand(command: projectorConstants.ProjectorCommands): void {
         console.log(`Sending projector command: ${command}`);
         this.invoke('ReceiveProjectorCommand', command);

@@ -105,21 +105,29 @@ public class CommandRunner<TCommands> where TCommands : Enum
         }
     }
     
-    public async Task EnqueueCommand(TCommands[] commands, Func<TCommands, string, Task> callback)
+    public async Task EnqueueCommand(TCommands[] commands, Func<TCommands, string, Task> callback, bool allowDuplicates = false)
     {
         foreach (var command in commands)
         {
             await queueAccessSemaphore.WaitAsync();
             try
             {
-                if (commandQueue.ToList().All(x => !x.command.Equals(command)))
+                if (allowDuplicates)
                 {
                     commandQueue.Enqueue((command, callback));
                     logger.LogInformation($"Command enqueued: {command}");
                 }
                 else
                 {
-                    logger.LogTrace($"Command already in queue: {command}");
+                    if (commandQueue.ToList().All(x => !x.command.Equals(command)))
+                    {
+                        commandQueue.Enqueue((command, callback));
+                        logger.LogInformation($"Command enqueued: {command}");
+                    }
+                    else
+                    {
+                        logger.LogTrace($"Command already in queue: {command}");
+                    }
                 }
             }
             finally

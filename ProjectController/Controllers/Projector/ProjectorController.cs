@@ -12,6 +12,9 @@ public class ProjectorController
     private readonly TcpCommunication tcpConnection;
     private readonly CommandRunner<ProjectorCommands> commandRunner;
     private bool startCommunicationSent = false;
+    private int targetVolume = 0;
+    private int currentVolume = 0;
+    private readonly SemaphoreSlim volumeUpdateSemaphore = new(1, 1);
     
     public ProjectorController(ILogger<ProjectorController> logger, 
         IHubContext<GUIHub> hub, 
@@ -35,6 +38,7 @@ public class ProjectorController
     {
         await tcpConnection.Initialize(ProjectorHost, ProjectorPort);
         await commandRunner.Start(SendCommand);
+        // _ = UpdateVolumeRunner(CancellationToken.None);
     }
 
     private async Task OnConnected()
@@ -43,6 +47,7 @@ public class ProjectorController
         await SendIsConnectedToProjector();
         await EnqueueCommand(ProjectorCommands.SystemControlStartCommunication);
         await EnqueueQuery(ProjectorCommands.SystemControlPowerQuery);
+        await EnqueueQuery(ProjectorCommands.SystemControlVolumeQuery);
     }
     
     private async Task OnDisconnected()
@@ -60,13 +65,13 @@ public class ProjectorController
 
     private bool IsConnected => tcpConnection.IsConnected;
 
-    public async Task EnqueueCommand(ProjectorCommands command)
+    public async Task EnqueueCommand(ProjectorCommands command, bool duplicatesAllowed = false)
     {
         await commandRunner.EnqueueCommand(new[] { command }, async (commandType, response) =>
         {
             await UpdateAllClients(commandType);
             await SendCommandResponseToClients(commandType, response);
-        });
+        }, duplicatesAllowed);
     }
     
     public async Task EnqueueQuery(ProjectorCommands command)
@@ -170,5 +175,40 @@ public class ProjectorController
         {
             queryType, currentStatus = status
         });
+    }
+
+    public async Task SetVolume(int volume)
+    {
+        await volumeUpdateSemaphore.WaitAsync();
+        targetVolume = volume;
+        volumeUpdateSemaphore.Release();
+    }
+    
+    private async Task UpdateVolumeRunner(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            await volumeUpdateSemaphore.WaitAsync(token);
+            try
+            {
+                var volumeDiff = targetVolume - currentVolume;
+                if (volumeDiff == 0)
+                    continue;
+                
+                var command = volumeDiff > 0 ? ProjectorCommands.SystemControlVolumeUp : ProjectorCommands.SystemControlVolumeDown;
+                for (var i = 0; i < Math.Abs(volumeDiff); i++)
+                {
+                    await EnqueueCommand(command, true);
+                }
+                currentVolume = targetVolume;
+                await EnqueueQuery(ProjectorCommands.SystemControlVolumeQuery);
+                await Task.Delay(20, token);
+            }
+            finally
+            {
+                volumeUpdateSemaphore.Release();
+            }
+        }
+        logger.LogInformation("Update Volume Runner was cancelled.");
     }
 }

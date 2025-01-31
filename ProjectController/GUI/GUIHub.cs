@@ -34,6 +34,11 @@ public class GUIHub : Hub
           logger.LogTrace("Received: IsConnectedToAndroidTVQuery");
         await adbConnection.SendIsConnectedToAndroidTV(adbConnection.IsConnected);
     }
+
+    public async Task ReceiveProjectorVolumeSet(int volume)
+    {
+        await projectorConnection.SetVolume(volume);
+    }
     
     public async Task ReceiveProjectorCommand(ProjectorCommands command)
     {
