@@ -35,14 +35,14 @@
     <div>
       <AdbKeyCodesTab
           v-if="selectedTab === 'adb'"
-          :buttonDisabled="buttonDisabledWhenPowerOff"
+          :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidCommand"
           :availableHeight="availableHeight"
       />
       <AndroidAppsTab
           v-if="selectedTab === 'apps'"
-          :disabled="buttonDisabledWhenPowerOff"
-          :buttonDisabled="buttonDisabledWhenPowerOff"
+          :disabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
+          :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidOpenAppCommand"
           :apps="availableApps"
           :availableHeight="availableHeight"
@@ -58,8 +58,8 @@
     <div class="tab-container">
       <div class="volume-row">
         <VolumeSlider 
-          v-model="targetVolume"
-          :isDisabled="buttonDisabledWhenPowerOff"
+          v-model="state.targetVolume"
+          :isDisabled="buttonDisabledWhenPoweredOff"
           :onVolumeChange="handleVolumeChange"
         />
       </div>
@@ -95,11 +95,10 @@ import * as adbConstants from "@/Constants/AdbConstants";
 
 // Reactive variable to store available height
 const availableHeight = ref(0);
-const targetVolume = ref(0);
 
 const handleVolumeChange = (newVolume: number) => {
   console.log(`Volume updated: ${newVolume}`);
-  targetVolume.value = newVolume;
+  state.targetVolume = newVolume;
   SignalRInstance.sendProjectorVolumeSet(newVolume);
 };
 
@@ -119,7 +118,8 @@ const calculateAvailableHeight = () => {
 
 const {
   state,
-  buttonDisabledWhenPowerOff,
+  buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV,
+  buttonDisabledWhenPoweredOff,
   handleDropdownChange,
   handleClickAndroidCommand,
   handleClickAndroidOpenAppCommand,

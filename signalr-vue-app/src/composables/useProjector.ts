@@ -7,17 +7,22 @@ import * as tvConstants from "@/Constants/TVConstants";
 export function useProjector() {
   const state = reactive({
     selectedInput: -1,
-    volume: 0,
+    targetVolume: 0,
     GUIConnected: false,
     ProjectorConnected: false,
     AndroidTVConnected: false,
     ProjectorPoweredOn: projectorConstants.PowerStatusGui.Pending,
   });
 
-  const buttonDisabledWhenPowerOff = computed(() => {
+  const buttonDisabledWhenPoweredOff = computed(() => {
+    return !state.GUIConnected ||
+        !state.ProjectorConnected ||
+        state.ProjectorPoweredOn !== projectorConstants.PowerStatusGui.On;
+  })
+  
+  const buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV = computed(() => {
     return !state.GUIConnected ||
       !state.ProjectorConnected ||
-      !state.ProjectorPoweredOn ||
       !state.AndroidTVConnected ||
       state.ProjectorPoweredOn !== projectorConstants.PowerStatusGui.On ||
       state.selectedInput !== projectorConstants.ProjectorCommands.SystemControlSourceHDMI3;
@@ -73,7 +78,7 @@ export function useProjector() {
     switch (queryType) {
       case projectorConstants.ProjectorCommands.SystemControlVolumeQuery:
         console.log(`Projector Volume query response: ${currentStatus}`);
-        state.volume = currentStatus as number;
+        state.targetVolume = currentStatus as number;
         break;
       case projectorConstants.ProjectorCommands.SystemControlSourceQuery:
         console.log(`Projector Source query response: ${currentStatus}`);
@@ -162,7 +167,8 @@ export function useProjector() {
     state,
     powerButtonText,
     buttonDisabledPowerButton,
-    buttonDisabledWhenPowerOff,
+    buttonDisabledWhenPoweredOff,
+    buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV,
     handleDropdownChange,
     handleClickProjectorCommands,
     handleClickTVCommand,

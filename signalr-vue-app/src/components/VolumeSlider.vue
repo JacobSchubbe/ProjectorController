@@ -86,6 +86,7 @@ export default defineComponent({
 
     // Sync changes from parent if `modelValue` updates
     watch(() => props.modelValue, (newValue) => {
+      console.log(`Volume changed from parent: ${newValue}`);
       internalVolume.value = newValue;
     });
 

@@ -120,12 +120,11 @@ public class CommandRunner<TCommands> where TCommands : Enum
             await queueAccessSemaphore.WaitAsync();
             try
             {
-                commandAvailableTcs.TrySetResult();
-                
                 if (allowDuplicates)
                 {
                     commandQueue.Enqueue((command, callback));
                     logger.LogInformation($"Command enqueued: {command}");
+                    commandAvailableTcs.TrySetResult();
                 }
                 else
                 {
@@ -133,6 +132,7 @@ public class CommandRunner<TCommands> where TCommands : Enum
                     {
                         commandQueue.Enqueue((command, callback));
                         logger.LogInformation($"Command enqueued: {command}");
+                        commandAvailableTcs.TrySetResult();
                     }
                     else
                     {

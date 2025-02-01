@@ -124,14 +124,14 @@ public class ProjectorController
 
     private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
     {
-        logger.LogInformation("Sending query response. QueryType: {$queryType} Raw response: {rawResponse}", queryType, rawResponse);
+        logger.LogTrace("Sending query response. QueryType: {$queryType} Raw response: {rawResponse}", queryType, rawResponse);
         switch (queryType)
         {
             case ProjectorCommands.SystemControlVolumeQuery:
                 if (int.TryParse(rawResponse.Split('=')[1].TrimEnd(':', '\r'), out var rawVolume))
                 {
                     await SetCurrentVolume(rawVolume);
-                    await SendQueryResponse(queryType, currentVolume);
+                    await SendQueryResponse(queryType, targetVolume);
                 }
                 break;
             case ProjectorCommands.SystemControlPowerQuery:
@@ -173,11 +173,17 @@ public class ProjectorController
                 logger.LogDebug($"Sending updated source to all clients: {commandType.ToString()}.");
                 await SendQueryResponse(ProjectorCommands.SystemControlSourceQuery, commandType);
                 break;
+            case ProjectorCommands.SystemControlVolumeUp:
+            case ProjectorCommands.SystemControlVolumeDown:
+                logger.LogDebug($"Sending updated target volume to all clients: {commandType.ToString()}.");
+                await SendQueryResponse(ProjectorCommands.SystemControlVolumeQuery, targetVolume);
+                break;
         }
     }
 
     private async Task SendQueryResponse<T>(ProjectorCommands queryType, T status)
     {
+        logger.LogInformation($"Sending query response: {status.ToString()} for query {queryType.ToString()}");
         await hub.Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
         {
             queryType, currentStatus = status
@@ -203,14 +209,15 @@ public class ProjectorController
         logger.LogDebug("Target volume set: {targetVolume}", targetVolume);
         volumeUpdateSemaphore.Release();
     }
-    
-    public async Task SetCurrentVolume(int volume)
+
+    private async Task SetCurrentVolume(int volume)
     {
         await volumeUpdateSemaphore.WaitAsync();
         currentVolume = (int)Math.Round(volume / (MaxVolume - MinVolume) * MaxDisplayVolume + MinVolume, 0, MidpointRounding.AwayFromZero);
         if (isInitialVolumeQueryOnConnected)
         {
             targetVolume = currentVolume;
+            logger.LogDebug("Initial Target Volume set: {targetVolume}", targetVolume);
             isInitialVolumeQueryOnConnected = false;
         }
         logger.LogDebug("Current volume set: {currentVolume}", currentVolume);
