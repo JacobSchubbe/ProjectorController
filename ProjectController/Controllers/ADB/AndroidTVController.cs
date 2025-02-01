@@ -68,12 +68,12 @@ public class AndroidTVController
 
     public async Task EnqueueCommand(KeyCodes command)
     {
-        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients, allowDuplicates:true);
     }
     
     public async Task EnqueueLongPressCommand(KeyCodes command)
     {
-        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients, allowDuplicates:true);
     }
     
     public Task EnqueueOpenAppCommand(KeyCodes command)
