@@ -43,10 +43,19 @@ public class ProjectorController
     {
         logger.LogInformation("Connected to projector.");
         await SendIsConnectedToProjector();
-        await EnqueueCommand(ProjectorCommands.SystemControlStartCommunication);
+        await SendInitialSystemControlStartCommunication();
         await EnqueueQuery(ProjectorCommands.SystemControlPowerQuery);
         isInitialVolumeQueryOnConnected = true;
         await EnqueueQuery(ProjectorCommands.SystemControlVolumeQuery);
+    }
+
+    private async Task SendInitialSystemControlStartCommunication()
+    {
+        logger.LogInformation("Sending System Control Start Communication.");
+        var commandType = ProjectorCommands.SystemControlStartCommunication;
+        var response = await SendCommand(commandType);
+        logger.LogInformation("Sent System Control Start Communication.");
+        await SendCommandResponseToClients(commandType, response);
     }
     
     private async Task OnDisconnected()
@@ -93,7 +102,7 @@ public class ProjectorController
             }
         }
         
-        return await tcpConnection.SendCommand(commandStr, CancellationToken.None);
+        return await tcpConnection.SendCommand(commandStr, CancellationToken.None, waitForSemaphore:false);
     }
     
     private async Task SendCommandResponseToClients(ProjectorCommands commandType, string response)

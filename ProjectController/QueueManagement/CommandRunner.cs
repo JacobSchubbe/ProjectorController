@@ -99,7 +99,7 @@ public class CommandRunner<TCommands> where TCommands : Enum
                 }
                 catch (Exception e)
                 {
-                    logger.LogError("Exception while trying to send a command. Type: {type}, Message: {message}", e.GetType().FullName, e.Message);
+                    logger.LogError("Exception while trying to send a command. Type: {type}, Message: {message}, Stack Trace: {stackTrace}", e.GetType().FullName, e.Message, e.StackTrace);
                 }
             }
         }
@@ -147,7 +147,7 @@ public class CommandRunner<TCommands> where TCommands : Enum
         }
     }
 
-    private async Task ClearQueue(CancellationToken token)
+    public async Task ClearQueue(CancellationToken token)
     {
         await queueAccessSemaphore.WaitAsync(token);
         try
