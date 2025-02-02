@@ -1,5 +1,4 @@
 // RUN apt-get update && apt-get install -y android-tools-adb
-
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
@@ -11,7 +10,6 @@ public class ADBClient
     private readonly ILogger<ADBClient> logger;
     private readonly List<string> _devices;
     private string? _selectedDevice;
-    // private Process? _serverProcess;
 
     private event Func<string, Task>? disconnectEvent;
     private event Func<string, Task>? connectEvent;
@@ -28,60 +26,6 @@ public class ADBClient
         _devices = new List<string>();
         Log("ADB client initialized.");
     }
-
-    private class CommandSubprocess
-    {
-        private Process? process;
-        private bool blocking;
-        
-        public CommandSubprocess(Process? process, bool blocking)
-        {
-            this.blocking = blocking;
-            this.process = process;
-        }
-
-        public static implicit operator Process?(CommandSubprocess? command)
-        {
-            if (command is { blocking: false })
-            {
-                // For non-blocking calls, start reading asynchronous output
-                command.process?.BeginOutputReadLine();
-                command.process?.BeginErrorReadLine();
-                return command.process; // Return the running Process object
-            }
-
-            if (command is { blocking: true })
-            {
-                // Wait for the process to complete and capture the output
-                var result = command.process?.StandardOutput.ReadToEnd();
-                command.process?.WaitForExit();
-                return null;
-            }
-
-            return null;
-        }
-        
-        public static implicit operator string(CommandSubprocess? command)
-        {
-            if (command is { blocking: false })
-            {
-                // For non-blocking calls, start reading asynchronous output
-                command.process?.BeginOutputReadLine();
-                command.process?.BeginErrorReadLine();
-                return string.Empty; // Return the running Process object
-            }
-
-            if (command is { blocking: true })
-            {
-                // Wait for the process to complete and capture the output
-                var result = command.process?.StandardOutput.ReadToEnd();
-                command.process?.WaitForExit();
-                return result?.Trim() ?? string.Empty;
-            }
-            
-            return string.Empty;
-        }
-    }
     
     private static string GetMachineArchitecture()
     {
@@ -93,7 +37,7 @@ public class ADBClient
         throw new NotSupportedException("Unknown architecture.");
     }
     
-    private CommandSubprocess ExecuteCommand(string command, bool blocking = true, bool includeSelectedSerial = true, LogLevel logLevel = LogLevel.Debug)
+    private AdbCommandSubprocess ExecuteCommand(string command, bool blocking = true, bool includeSelectedSerial = true, LogLevel? logLevel = LogLevel.Debug)
     {
         var adbBasePath = GetMachineArchitecture() switch
         {
@@ -113,7 +57,8 @@ public class ADBClient
         }
         adbCommand += command;
         
-        Log($"Executing command: {adbCommand}", logLevel);
+        if (logLevel is { } level)
+            Log($"Executing command: {adbCommand}", level);
 
         var process = new Process { StartInfo = new ProcessStartInfo
             {
@@ -130,7 +75,7 @@ public class ADBClient
         process.ErrorDataReceived += (sender, args) => Log(args.Data ?? "No error data received");
         
         process.Start();
-        return new CommandSubprocess(process, blocking);
+        return new AdbCommandSubprocess(process, blocking);
     }
 
     public void RegisterOnDisconnect(Func<string, Task> callback)
@@ -170,15 +115,18 @@ public class ADBClient
         try
         {
             GetDevices();
-            var isConnected = _selectedDevice != null && IsConnected(ip);
+            _selectedDevice = _devices.FirstOrDefault(x => x.StartsWith(ip));
+            var isConnected = IsConnected(ip);
             if (isConnected != lastConnectionStatus)
             {
                 if (isConnected)
                 {
+                    Log($"Device {ip} connected.", LogLevel.Trace);
                     await (connectEvent?.Invoke(ip) ?? Task.CompletedTask);
                 }
                 else
                 {
+                    Log($"Device {ip} disconnected.", LogLevel.Trace);
                     await (disconnectEvent?.Invoke(ip) ?? Task.CompletedTask);
                 }
                 lastConnectionStatus = isConnected;
@@ -234,8 +182,8 @@ public class ADBClient
                     if (result.Contains("connected"))
                     {
                         GetDevices();
-                        _selectedDevice = _devices[_devices.Count - 1];
-                        Log($"Device {_selectedDevice} connected successfully.");
+                        _selectedDevice = _devices.FirstOrDefault(x => x.StartsWith(ip));
+                        Log($"Device {_selectedDevice} connected successfully to {ip}.");
                         return true;
                     }
 
@@ -248,8 +196,8 @@ public class ADBClient
                 }
             }
 
-            Log($"Already connected to device {_selectedDevice} with {ip}.");
             cancellationToken.ThrowIfCancellationRequested();
+            Log($"Already connected to device {_selectedDevice} with {ip}.");
             return true;
         }
         finally
@@ -283,10 +231,10 @@ public class ADBClient
 
     private List<string> GetDevices()
     {
-        Log("Getting connected devices...", LogLevel.Trace);
+        // Log("Getting connected devices...", LogLevel.Trace);
         _devices.Clear();
         _selectedDevice = null;
-        var result = ExecuteCommand("devices -l", includeSelectedSerial: false, logLevel: LogLevel.Trace);
+        var result = ExecuteCommand("devices -l", includeSelectedSerial: false, logLevel: null);
 
         var lines = ((string)result).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
         
@@ -296,7 +244,7 @@ public class ADBClient
         {
             var serial = lines[i].Split(' ')[0];
             _devices.Add(serial);
-            Log($"Found device: {serial}", LogLevel.Trace);
+            // Log($"Found device: {serial}", LogLevel.Trace);
         }
 
         return _devices;

@@ -35,14 +35,14 @@
     <div>
       <AdbKeyCodesTab
           v-if="selectedTab === 'adb'"
-          :buttonDisabled="buttonDisabledWhenPowerOff"
+          :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidCommand"
           :availableHeight="availableHeight"
       />
       <AndroidAppsTab
           v-if="selectedTab === 'apps'"
-          :disabled="buttonDisabledWhenPowerOff"
-          :buttonDisabled="buttonDisabledWhenPowerOff"
+          :disabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
+          :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidOpenAppCommand"
           :apps="availableApps"
           :availableHeight="availableHeight"
@@ -57,20 +57,11 @@
     <!-- Tab Navigation Section -->
     <div class="tab-container">
       <div class="volume-row">
-        <ControlButton
-            :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeDown)"
-            class="volume-button"
-        >
-          Volume<br/><br/>-
-        </ControlButton>
-        <ControlButton
-            :disabled="buttonDisabledWhenPowerOff"
-            :onClick="() => handleClickProjectorCommands(projectorConstants.ProjectorCommands.KeyControlVolumeUp)"
-            class="volume-button"
-        >
-          Volume<br/><br/>+
-        </ControlButton>
+        <VolumeSlider 
+          v-model="state.targetVolume"
+          :isDisabled="buttonDisabledWhenPoweredOff"
+          :onVolumeChange="handleVolumeChange"
+        />
       </div>
       <div class="tab-row">
         <button
@@ -95,15 +86,21 @@ import { SignalRInstance } from "./SignalRServiceManager";
 import * as projectorConstants from "./Constants/ProjectorConstants";
 import Dropdown from "@/components/DropDown.vue";
 import ToggleSwitch from "@/components/ToggleSwitch.vue";
-import ControlButton from "@/components/ControlButton.vue";
 import AdbKeyCodesTab from "@/Views/AndroidTVButtonLayout.vue";
 import AndroidAppsTab from "@/Views/AndroidAppsButtonLayout.vue";
 import TvCommandsTab from "@/Views/TVControlButtonLayout.vue";
+import VolumeSlider from "@/components/VolumeSlider.vue";
 import { useProjector } from "@/composables/useProjector";
 import * as adbConstants from "@/Constants/AdbConstants";
 
 // Reactive variable to store available height
 const availableHeight = ref(0);
+
+const handleVolumeChange = (newVolume: number) => {
+  console.log(`Volume updated: ${newVolume}`);
+  state.targetVolume = newVolume;
+  SignalRInstance.sendProjectorVolumeSet(newVolume);
+};
 
 const calculateAvailableHeight = () => {
   // Query the size of the top header and bottom tab menu
@@ -121,9 +118,9 @@ const calculateAvailableHeight = () => {
 
 const {
   state,
-  buttonDisabledWhenPowerOff,
+  buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV,
+  buttonDisabledWhenPoweredOff,
   handleDropdownChange,
-  handleClickProjectorCommands,
   handleClickAndroidCommand,
   handleClickAndroidOpenAppCommand,
   handleClickTVCommand,

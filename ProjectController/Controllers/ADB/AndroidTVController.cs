@@ -33,20 +33,34 @@ public class AndroidTVController
         if (ip != updatedIp)
             return;
         logger.LogInformation("Connected to AndroidTV.");
-        await SendIsConnectedToProjector(true);
+        await SendIsConnectedToAndroidTV(true);
     }
     
     private async Task OnDisconnected(string updatedIp)
     {
         if (ip != updatedIp)
             return;
-        logger.LogInformation("Disconnected from AndroidTV.");
-        await SendIsConnectedToProjector(false);
+        logger.LogInformation("Disconnected from AndroidTV. Trying to reconnect.");
+        await SendIsConnectedToAndroidTV(false);
+        _ = TryToReconnect();
+    }
+
+    private async Task TryToReconnect()
+    {
+        try
+        {
+            await adbController.Connect(CancellationToken.None);
+            await SendIsConnectedToAndroidTV(IsConnected);
+        }
+        catch (Exception)
+        {
+            logger.LogWarning("Failed to connect to device at ip {ip}", ip);
+        }
     }
     
     public bool IsConnected => adbController.IsConnected();
 
-    public async Task SendIsConnectedToProjector(bool isConnected)
+    public async Task SendIsConnectedToAndroidTV(bool isConnected)
     {
         logger.LogInformation($"Sending IsConnectedToAndroidTVQuery: {isConnected}");
         await hub.Clients.All.SendAsync("IsConnectedToAndroidTVQuery", isConnected);
@@ -54,12 +68,12 @@ public class AndroidTVController
 
     public async Task EnqueueCommand(KeyCodes command)
     {
-        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients, allowDuplicates:true);
     }
     
     public async Task EnqueueLongPressCommand(KeyCodes command)
     {
-        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
+        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients, allowDuplicates:true);
     }
     
     public Task EnqueueOpenAppCommand(KeyCodes command)
@@ -108,22 +122,6 @@ public class AndroidTVController
 
     private async Task<string> SendCommand(KeyCodes command)
     {
-        if (!adbController.IsConnected())
-        {
-            var timeout = 3;
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout));
-            try
-            {
-                await adbController.Connect(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                return $"Failed to connect to device after {timeout} seconds.";
-            }
-            
-            await SendIsConnectedToProjector(IsConnected);
-        }
-
         try
         {
             await adbController.KeyCommands[command]();

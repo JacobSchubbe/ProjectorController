@@ -11,6 +11,8 @@ public class CommandRunner<TCommands> where TCommands : Enum
     private Task commandQueueTask = Task.CompletedTask;
     private Func<TCommands, Task<string>>? sendCommand;
     private readonly SemaphoreSlim queueAccessSemaphore = new(1, 1);
+    private TaskCompletionSource commandAvailableTcs = new();
+
     public event Func<CancellationToken, Task>? PreCommandEvent;
 
     public CommandRunner(ILogger<CommandRunner<TCommands>> logger)
@@ -52,11 +54,15 @@ public class CommandRunner<TCommands> where TCommands : Enum
         {
             while (!token.IsCancellationRequested)
             {
-                token.ThrowIfCancellationRequested();
-                
-                if (commandQueue.Count == 0)
+                var commandAvailableTask = commandAvailableTcs.Task;
+                var cancellationTask = Task.Delay(Timeout.Infinite, token);
+                var result = await Task.WhenAny(commandAvailableTask, cancellationTask);
+                if (result == cancellationTask)
                 {
-                    await Task.Delay(TimeSpan.FromMilliseconds(500), token);
+                    token.ThrowIfCancellationRequested();
+                }
+                else if (result == commandAvailableTask && commandAvailableTask.IsCanceled)
+                {
                     continue;
                 }
                 
@@ -74,6 +80,10 @@ public class CommandRunner<TCommands> where TCommands : Enum
                         logger.LogDebug("Checking for command to dequeue...");
                         dequeued = commandQueue.TryDequeue(out commandKvp);
                         logger.LogDebug("Remaining queue: {commands}", string.Join(", ", commandQueue.Select(x => x.command.ToString())));
+                        if (commandQueue.Count == 0)
+                        {
+                            commandAvailableTcs = new();
+                        }
                     }
                     finally
                     {
@@ -89,10 +99,8 @@ public class CommandRunner<TCommands> where TCommands : Enum
                 }
                 catch (Exception e)
                 {
-                    logger.LogError("Exception while trying to send a command. Type: {type}, Message: {message}", e.GetType().FullName, e.Message);
+                    logger.LogError("Exception while trying to send a command. Type: {type}, Message: {message}, Stack Trace: {stackTrace}", e.GetType().FullName, e.Message, e.StackTrace);
                 }
-            
-                await Task.Delay(TimeSpan.FromMilliseconds(100), token);
             }
         }
         catch (OperationCanceledException)
@@ -105,21 +113,31 @@ public class CommandRunner<TCommands> where TCommands : Enum
         }
     }
     
-    public async Task EnqueueCommand(TCommands[] commands, Func<TCommands, string, Task> callback)
+    public async Task EnqueueCommand(TCommands[] commands, Func<TCommands, string, Task> callback, bool allowDuplicates = false)
     {
         foreach (var command in commands)
         {
             await queueAccessSemaphore.WaitAsync();
             try
             {
-                if (commandQueue.ToList().All(x => !x.command.Equals(command)))
+                if (allowDuplicates)
                 {
                     commandQueue.Enqueue((command, callback));
                     logger.LogInformation($"Command enqueued: {command}");
+                    commandAvailableTcs.TrySetResult();
                 }
                 else
                 {
-                    logger.LogTrace($"Command already in queue: {command}");
+                    if (commandQueue.ToList().All(x => !x.command.Equals(command)))
+                    {
+                        commandQueue.Enqueue((command, callback));
+                        logger.LogInformation($"Command enqueued: {command}");
+                        commandAvailableTcs.TrySetResult();
+                    }
+                    else
+                    {
+                        logger.LogTrace($"Command already in queue: {command}");
+                    }
                 }
             }
             finally
@@ -129,12 +147,14 @@ public class CommandRunner<TCommands> where TCommands : Enum
         }
     }
 
-    private async Task ClearQueue(CancellationToken token)
+    public async Task ClearQueue(CancellationToken token)
     {
         await queueAccessSemaphore.WaitAsync(token);
         try
         {
             commandQueue.Clear();
+            commandAvailableTcs.TrySetCanceled();
+            commandAvailableTcs = new();
         }
         finally
         {

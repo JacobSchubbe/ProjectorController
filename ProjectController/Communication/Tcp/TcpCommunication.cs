@@ -220,11 +220,13 @@ public sealed class TcpCommunication : IDisposable
         }
     }
     
-    public async Task<string> SendCommand(string commandStr, CancellationToken cancellationToken)
+    public async Task<string> SendCommand(string commandStr, CancellationToken cancellationToken, bool waitForSemaphore = true)
     {
         while (true)
         {
-            await GetConnectionSemaphore(cancellationToken);
+            if (waitForSemaphore)
+                await GetConnectionSemaphore(cancellationToken);
+    
             try
             {
                 var commandBytes = Encoding.ASCII.GetBytes(commandStr);
@@ -243,7 +245,8 @@ public sealed class TcpCommunication : IDisposable
             finally
             {
                 socketSendingSemaphore.Release();
-                ReleaseConnectionSemaphore();
+                if (waitForSemaphore)
+                    ReleaseConnectionSemaphore();
             }
             
             await Task.Delay(250, cancellationToken);
