@@ -2,9 +2,9 @@
   <button
       :class="[styleClass]"
       :disabled="disabled"
-      @mousedown="startPress"
-      @mouseup="endPress.bind(this, false)"
-      @mouseleave="endPress.bind(this, true)"
+      @pointerdown="startPress"
+      @pointerup="endPress.bind(this, false)"
+      @pointerleave="endPress.bind(this, true)"
   >
     <slot></slot>
   </button>
@@ -34,38 +34,64 @@ export default defineComponent({
     return {
       pressTimer: null as number | null, // Timer for detecting long presses
       isLongPress: false, // Flag for whether it's a long press
+      pressStartTime: 0, // Track timestamp of the mousedown event
     };
+  },
+  mounted() {
+    document.addEventListener("pointerup", this.globalEndPress);
+  },
+  beforeUnmount() {
+    document.removeEventListener("pointerup", this.globalEndPress);
   },
   methods: {
     startPress(): void {
+      // Record the start time of the press
+      this.pressStartTime = Date.now();
+
       // Reset long press flag
       this.isLongPress = false;
 
-      // Start timer to detect long press
+      // Start timer for long press detection
       this.pressTimer = window.setTimeout(() => {
-        this.isLongPress = true;
-        this.onClick(true); // Call parent function with true for long press
+        this.isLongPress = true; // Mark as a long press
+        this.onClick(true); // Trigger long press handler
         this.pressTimer = null; // Reset timer
       }, 800); // Long press threshold (800ms)
     },
-    endPress(isCancelled: boolean): void {
-      // If the timer is active and a long press hasn't triggered yet
-      if (this.pressTimer) {
-        window.clearTimeout(this.pressTimer); // Clear the timeout
-        this.pressTimer = null; // Reset the timer
 
-        // If it's not cancelled and not a long press, trigger a short press
-        if (!this.isLongPress && !isCancelled) {
-          this.onClick(false); // Call parent function with false for short press
-        }
-      }
-    },
-    cancelPress(): void {
-      // If mouse moves away from button, cancel the press detection
+    endPress(isCancelled: boolean): void {
+      // Clear the timer immediately if it exists
       if (this.pressTimer) {
         window.clearTimeout(this.pressTimer);
         this.pressTimer = null;
       }
+
+      // Calculate the duration of the press
+      const pressDuration = Date.now() - this.pressStartTime;
+
+      // If it's not cancelled, and the press duration was below 800ms, trigger short press
+      if (!isCancelled && pressDuration < 800 && !this.isLongPress) {
+        this.onClick(false); // Trigger short press handler
+      }
+
+      // Reset `isLongPress` flag after handling
+      this.isLongPress = false;
+    },
+
+    cancelPress(): void {
+      // Clear the timer immediately
+      if (this.pressTimer) {
+        window.clearTimeout(this.pressTimer);
+        this.pressTimer = null;
+      }
+
+      // Reset long press flag
+      this.isLongPress = false;
+    },
+
+    globalEndPress() {
+      // If global mouseup is detected, call endPress
+      this.endPress(false);
     },
   },
 });
