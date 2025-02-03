@@ -20,4 +20,5 @@ scp "${PI_USER}@${PI_HOST}:${PI_LOG_PATH}/*${YESTERDAY}*" "$LOCAL_DEST"
 #    sudo rm -rf /home/logs/*${YESTERDAY}*
 #    echo "Logs removed from the pi."
 #EOF
+
 echo "Logs successfully extracted to $LOCAL_DEST"

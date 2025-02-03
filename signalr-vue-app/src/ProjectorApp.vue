@@ -41,7 +41,6 @@
       />
       <AndroidAppsTab
           v-if="selectedTab === 'apps'"
-          :disabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidOpenAppCommand"
           :apps="availableApps"

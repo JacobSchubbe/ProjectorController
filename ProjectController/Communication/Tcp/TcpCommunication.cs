@@ -71,7 +71,7 @@ public sealed class TcpCommunication : IDisposable
         }
     }
 
-    private Task DisposeExistingSocket()
+    private async Task DisposeExistingSocket()
     {
         try
         {
@@ -85,6 +85,7 @@ public sealed class TcpCommunication : IDisposable
             logger.LogInformation("Disposing the old socket...");
             socket?.Dispose(); // Dispose of the old socket
             lastConnectionStatus = false;
+            await (disconnectEvent?.Invoke() ?? Task.CompletedTask);
         }
         catch (SocketException ex)
         {
@@ -94,7 +95,6 @@ public sealed class TcpCommunication : IDisposable
         {
             logger.LogError(ex, "Unexpected error occurred while disposing of the existing socket.");
         }
-        return Task.CompletedTask;
     }
     
     public async Task Disconnect()
@@ -224,9 +224,14 @@ public sealed class TcpCommunication : IDisposable
     {
         while (true)
         {
+            logger.LogTrace("Accessing semaphore for send command.");
             if (waitForSemaphore)
+            {
+                logger.LogTrace("Waiting for semaphore for send command.");
                 await GetConnectionSemaphore(cancellationToken);
-    
+            }
+
+            var socketSendingSemaphoreReleasedAlready = false;
             try
             {
                 var commandBytes = Encoding.ASCII.GetBytes(commandStr);
@@ -240,11 +245,14 @@ public sealed class TcpCommunication : IDisposable
             catch (SocketException ex)
             {
                 logger.LogError($"SocketException while sending command: {ex.Message}");
+                socketSendingSemaphoreReleasedAlready = true;
+                socketSendingSemaphore.Release();
                 await CreateNewSocket(host, port, cancellationToken);
             }
             finally
             {
-                socketSendingSemaphore.Release();
+                if (!socketSendingSemaphoreReleasedAlready)
+                    socketSendingSemaphore.Release();
                 if (waitForSemaphore)
                     ReleaseConnectionSemaphore();
             }

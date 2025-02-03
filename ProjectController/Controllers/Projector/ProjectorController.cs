@@ -111,8 +111,15 @@ public class ProjectorController
         {
             if (string.IsNullOrEmpty(response))
             {
-                logger.LogInformation($"Start communication failed.");
-                startCommunicationSent = false;
+                if (startCommunicationSent)
+                {
+                    logger.LogInformation($"Start communication was already acknowledged.");
+                }
+                else
+                {
+                    logger.LogInformation($"Start communication failed.");
+                    startCommunicationSent = false;
+                }
                 return;
             }
             

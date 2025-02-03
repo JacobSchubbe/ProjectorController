@@ -21,29 +21,11 @@ export function useProjector() {
   })
   
   const buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV = computed(() => {
-    return !state.GUIConnected ||
-      !state.ProjectorConnected ||
+    return buttonDisabledWhenPoweredOff.value ||
       !state.AndroidTVConnected ||
-      state.ProjectorPoweredOn !== projectorConstants.PowerStatusGui.On ||
       state.selectedInput !== projectorConstants.ProjectorCommands.SystemControlSourceHDMI3;
   });
-
-  const buttonDisabledPowerButton = computed(() => {
-    return !state.GUIConnected ||
-      !state.ProjectorConnected ||
-      state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.Pending;
-  });
-
-  const powerButtonText = computed(() => {
-    if (!state.GUIConnected) return "GUI Not Connected";
-    if (!state.ProjectorConnected) return "Projector Not Connected";
-    return state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.Pending
-      ? "Loading..."
-      : state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.On
-      ? "Turn Power Off"
-      : "Turn Power On";
-  });
-
+  
   const handlePowerToggle = (isPoweredOn: boolean) => {
     if (isPoweredOn) {
       handleClickProjectorCommands(projectorConstants.ProjectorCommands.SystemControlPowerOn);
@@ -165,8 +147,6 @@ export function useProjector() {
 
   return {
     state,
-    powerButtonText,
-    buttonDisabledPowerButton,
     buttonDisabledWhenPoweredOff,
     buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV,
     handleDropdownChange,
