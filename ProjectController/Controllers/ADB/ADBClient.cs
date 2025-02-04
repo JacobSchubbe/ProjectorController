@@ -187,12 +187,12 @@ public class ADBClient
                         return true;
                     }
 
-                    Log($"Failed to connect to {ip}. Trying again in {reconnectionTime} seconds.");
+                    Log($"Failed to connect to {ip}. Trying again in {reconnectionTime} seconds.", LogLevel.Trace);
                     continue;
                 }
                 catch (Exception e)
                 {
-                    Log($"Error connecting to {ip}: {e.Message}");
+                    Log($"Error connecting to {ip}: {e.Message}", LogLevel.Error);
                 }
             }
 
