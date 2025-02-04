@@ -1,4 +1,5 @@
 using System.IO.Ports;
+using Microsoft.AspNetCore.SignalR;
 using ProjectController.Communication.Serial;
 
 namespace ProjectController.Controllers.HdmiSwitch;
@@ -6,16 +7,18 @@ namespace ProjectController.Controllers.HdmiSwitch;
 public class HdmiSwitchController
 {
     private readonly SerialCommunication serialCommunication;
-    private string portName = "COM3"; // Replace with the correct COM port for your device
+    private readonly IHubContext<GUIHub> hub;
+    private string portName = "/dev/ttyUSB0"; // Replace with the correct COM port for your device
     private int baudRate = 19200;     // The desired baud rate (19200)
     private int dataBits = 8;         // Number of data bits (8)
     private Parity parity = Parity.None;      // Parity setting (None)
     private StopBits stopBits = StopBits.One; // Stop bits setting (1 stop bit)
     private Handshake handshake = Handshake.None; // Flow control (None)
     
-    public HdmiSwitchController(SerialCommunication serialCommunication)
+    public HdmiSwitchController(SerialCommunication serialCommunication, IHubContext<GUIHub> hub)
     {
         this.serialCommunication = serialCommunication;
+        this.hub = hub;
         serialCommunication.Connect(portName, baudRate, dataBits, parity, stopBits, handshake, 0x04).Wait();
     }
 
@@ -24,44 +27,45 @@ public class HdmiSwitchController
         if (input is < 1 or > 4)
             throw new ArgumentOutOfRangeException(nameof(input), "Input must be between 1 and 4");
 
-        var command = $"sw i 0{input}\r"; // it says [Enter] so maybe a \r?
-        serialCommunication.WriteCommand(command);
-        return serialCommunication.ReadResponseAsString();
+        var command = $"sw i 0{input}"; // it says [Enter] so maybe a \r?
+        WriteCommand(command);
+        return ReadResponseAsString();
     }
 
     public string ToggleDisplayOn(bool isOn)
     {
-        var command = $"sw {(isOn ? "on" : "off")}\r";
-        serialCommunication.WriteCommand(command);
-        return serialCommunication.ReadResponseAsString();
+        var command = $"sw {(isOn ? "on" : "off")}";
+        WriteCommand(command);
+        return ReadResponseAsString();
     }
 
     public string SwitchToNextOrPreviousInput(bool isNext)
     {
-        var command = $"sw {(isNext ? "+" : "-")}\r";
-        serialCommunication.WriteCommand(command);
-        return serialCommunication.ReadResponseAsString();
+        var command = $"sw {(isNext ? "+" : "-")}";
+        WriteCommand(command);
+        return ReadResponseAsString();
     }
 
     public string EnableHotPlugDetection(bool isEnabled)
     {
-        var command = $"hpd {(isEnabled ? "on" : "off")}\r";
-        serialCommunication.WriteCommand(command);
-        return serialCommunication.ReadResponseAsString();
+        var command = $"hpd {(isEnabled ? "on" : "off")}";
+        WriteCommand(command);
+        return ReadResponseAsString();
     }
 
-    public string ReadCurrentConfiguration()
+    public async Task<string> ReadCurrentConfiguration()
     {
-        var command = $"read\r";
-        serialCommunication.WriteCommand(command);
-        return serialCommunication.ReadResponseAsString();
+        var command = "read";
+        WriteCommand(command);
+        await hub.Clients.All.SendAsync("handleHdmiInputQuery", 3);
+        return ReadResponseAsString();
     }
 
     public string ResetToFactoryDefaults()
     {
-        var command = $"reset\r";
-        serialCommunication.WriteCommand(command);
-        return serialCommunication.ReadResponseAsString();
+        var command = $"reset";
+        WriteCommand(command);
+        return ReadResponseAsString();
     }
 
     public string SetSwitchMode(SwitchMode mode, int? input = null, bool? goToOn = null)
@@ -69,26 +73,36 @@ public class HdmiSwitchController
         switch (mode)
         {
             case SwitchMode.Auto:
-                serialCommunication.WriteCommand($"swmode i0{input} auto\r");
+                WriteCommand($"swmode i0{input} auto");
                 break;
             case SwitchMode.Next:
-                serialCommunication.WriteCommand($"swmode next\r");
+                WriteCommand("swmode next");
                 break;
             case SwitchMode.Default:
-                serialCommunication.WriteCommand($"swmode default\r");
+                WriteCommand("swmode default");
                 break;
             case SwitchMode.GoTo:
                 if (!goToOn.HasValue)
                     throw new ArgumentNullException(nameof(goToOn), "GoTo mode requires a value for goToOn");
-                serialCommunication.WriteCommand($"swmode goto {(goToOn.Value ? "on" : "off")}\r");
+                WriteCommand($"swmode goto {(goToOn.Value ? "on" : "off")}");
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
         }
         
-        return serialCommunication.ReadResponseAsString();
+        return ReadResponseAsString();
     }
 
+    private void WriteCommand(string command)
+    {
+        serialCommunication.WriteCommand($"{command}\r");
+    }
+
+    private string ReadResponseAsString()
+    {
+        return serialCommunication.ReadResponseAsString();
+    }
+    
     public enum SwitchMode
     {
         Next, // Switch priority is placed on the next port that has a new source device connected to it. (default) 

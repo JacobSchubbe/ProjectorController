@@ -2,6 +2,7 @@
 using ProjectController.Communication.Serial;
 using ProjectController.Communication.Tcp;
 using ProjectController.Controllers.ADB;
+using ProjectController.Controllers.HdmiSwitch;
 using ProjectController.Controllers.Projector;
 using ProjectController.QueueManagement;
 using Serilog;
@@ -17,6 +18,7 @@ builder.Services.AddSingleton<CommandRunner<KeyCodes>>();
 builder.Services.AddSingleton<AdbController>();
 builder.Services.AddSingleton<ProjectorController>();
 builder.Services.AddSingleton<AndroidTVController>();
+builder.Services.AddSingleton<HdmiSwitchController>();
 
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
 if (allowedOrigins == null)

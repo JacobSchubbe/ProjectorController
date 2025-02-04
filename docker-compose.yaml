@@ -22,5 +22,6 @@ services:
       - /var/run/lirc:/var/run/lirc # Maps the LIRC socket directory
     devices:
       - /dev/lirc0:/dev/lirc0 # Maps the LIRC device
+      - /dev/ttyUSB0:/dev/ttyUSB0
     privileged: true # Grants elevated privileges to access host hardware
     restart: always

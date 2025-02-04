@@ -126,13 +126,16 @@ const {
   handlePowerToggle,
   handleProjectorConnectionStateChange,
   handleAndroidTVConnectionStateChange,
+  handleHdmiInputQuery,
   handleProjectorQueryResponse,
   handleGUIConnectionStateChange
 } = useProjector();
 
 const inputOptions = [
-  { label: "TV/Switch", value: projectorConstants.ProjectorCommands.SystemControlSourceHDMI1 },
-  { label: "SmartTV", value: projectorConstants.ProjectorCommands.SystemControlSourceHDMI3 },
+  { label: "Smart TV", value: 1 },
+  { label: "Cable TV", value: 2 },
+  { label: "Nintendo Switch", value: 3 },
+  { label: "Steam Link", value: 4 },
 ];
 
 const tabs = ref([
@@ -163,6 +166,7 @@ onMounted(async () => {
   await SignalRInstance.initialize(
       (isConnected) => { handleProjectorConnectionStateChange(isConnected); },
       (isConnected) => { handleAndroidTVConnectionStateChange(isConnected); },
+      (response) => { handleHdmiInputQuery(response); },
       (response) => { handleProjectorQueryResponse(response.queryType, response.currentStatus); },
       (connectionStatus) => { handleGUIConnectionStateChange(connectionStatus); }
   );

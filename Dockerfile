@@ -34,6 +34,8 @@ RUN apk add --no-cache \
     bash \
     lirc
 
+ENV LD_LIBRARY_PATH=/app/runtimes/linux-arm/native:$LD_LIBRARY_PATH
+
 WORKDIR /app
 COPY --from=build /app/publish /app/
 COPY nginx/nginx.conf /etc/nginx/http.d/default.conf

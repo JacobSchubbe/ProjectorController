@@ -55,6 +55,11 @@ export function useProjector() {
       }
     }
   }
+  
+  const handleHdmiInputQuery = (currentStatus:Number) => {
+    console.log(`Hdmi switch input query response: ${currentStatus as number}`);
+    state.selectedInput = currentStatus as number;
+  }
 
   const handleProjectorQueryResponse = (queryType:Number, currentStatus:Number) => {
     switch (queryType) {
@@ -63,8 +68,6 @@ export function useProjector() {
         state.targetVolume = currentStatus as number;
         break;
       case projectorConstants.ProjectorCommands.SystemControlSourceQuery:
-        console.log(`Projector Source query response: ${currentStatus}`);
-        state.selectedInput = currentStatus as projectorConstants.ProjectorCommands;
         break;
       case projectorConstants.ProjectorCommands.SystemControlPowerQuery:
         console.log(`Projector Power query response: ${currentStatus}`);
@@ -141,7 +144,7 @@ export function useProjector() {
 
   const handleDropdownChange = () => {
     console.log(`Selected Input: ${state.selectedInput}`);
-    SignalRInstance.sendProjectorCommand(state.selectedInput);
+    SignalRInstance.sendHdmiCommand(state.selectedInput);
     console.log(`Command sent: ${state.selectedInput}`);
   };
 
@@ -156,6 +159,7 @@ export function useProjector() {
     handleClickAndroidOpenAppCommand,
     handleProjectorConnectionStateChange,
     handleAndroidTVConnectionStateChange,
+    handleHdmiInputQuery,
     handleProjectorQueryResponse,
     handleGUIConnectionStateChange,
     handlePowerToggle
