@@ -3,12 +3,12 @@
 # Variables (customize these for your project)
 IMAGE_NAME="projectorcontroller"                     # Replace with your Docker image name
 TAR_FILE="projectorcontroller.tar"                        # Name of the exported TAR file
-TARGET_HOST="jacob.schubbe@raspberrypi.local"                     # Replace with your target host (e.g., pi)
+TARGET_HOST="jacob.schubbe@192.168.0.174"                     # Replace with your target host (e.g., pi)
 REMOTE_DIR="/home/jacob.schubbe/projectorcontroller"                # Replace with the target directory on the remote host
 DOCKER_COMPOSE_PATH="../docker-compose.yaml"   # Replace with your Docker Compose file path
 DOCKER_REMOTE_COMPOSE_DIR="$REMOTE_DIR/"     # Remote location for the docker-compose.yml file
 PI_USER="jacob.schubbe"                   # Raspberry Pi username
-PI_HOST="raspberrypi.local"    # Raspberry Pi hostname or IP
+PI_HOST="192.168.0.174"    # Raspberry Pi hostname or IP
 PI_LOG_PATH="/home/logs"    # Path to logs on the Raspberry Pi
 LOCAL_DEST="./logs"            # Local directory to save logs
 

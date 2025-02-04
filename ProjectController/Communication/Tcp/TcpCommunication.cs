@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using System.Text;
+using Serilog;
 
 namespace ProjectController.Communication.Tcp;
 
@@ -25,6 +26,12 @@ public sealed class TcpCommunication : IDisposable
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         Task.Run(async () => await DetectConnectionChange(CancellationToken.None));
     }
+    
+    private void Log(string message, LogLevel logLevel = LogLevel.Debug)
+    {
+        logger.Log(logLevel, logLevel is LogLevel.Trace or LogLevel.Error or LogLevel.Critical ? message + $"Stack Trace: {Environment.StackTrace}" : message);
+    }
+    
 
     private async Task GetConnectionSemaphore(CancellationToken cancellationToken)
     {
@@ -54,18 +61,18 @@ public sealed class TcpCommunication : IDisposable
                 await DisposeExistingSocket(); // Dispose of any existing socket
             
                 // Create and configure a new socket
-                logger.LogInformation($"Creating a new socket for {host}:{port}...");
+                Log($"Creating a new socket for {host}:{port}...", LogLevel.Information);
                 host = newHost;
                 port = newPort;
                 socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                logger.LogInformation("New socket successfully created.");
+                Log("New socket successfully created.", LogLevel.Information);
                 await StartSocket(cancellationToken);
                 return;
             }
             catch (Exception ex)
             {
                 retryCount++;
-                logger.LogError(ex, $"Failed to create socket. Retrying in {retryCount * 1000}ms...");
+                Log($"Failed to create socket. Retrying in {retryCount * 1000}ms... Ex: {ex}");
                 await Task.Delay(retryCount * 1000, cancellationToken); // Exponential backoff
             }
         }
@@ -77,23 +84,23 @@ public sealed class TcpCommunication : IDisposable
         {
             if (socket?.Connected ?? false)
             {
-                logger.LogInformation("Shutting down the existing socket...");
+                Log("Shutting down the existing socket...", LogLevel.Information);
                 socket.Shutdown(SocketShutdown.Both); // Shutdown the socket gracefully
                 socket.Close(); // Close the socket
             }
 
-            logger.LogInformation("Disposing the old socket...");
+            Log("Disposing the old socket...", LogLevel.Information);
             socket?.Dispose(); // Dispose of the old socket
             lastConnectionStatus = false;
             await (disconnectEvent?.Invoke() ?? Task.CompletedTask);
         }
         catch (SocketException ex)
         {
-            logger.LogError(ex, "SocketException occurred while disposing of the old socket.");
+            Log($"SocketException occurred while disposing of the old socket: {ex}", LogLevel.Error);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unexpected error occurred while disposing of the existing socket.");
+            Log($"Unexpected error occurred while disposing of the existing socket: {ex}", LogLevel.Error);
         }
     }
     
@@ -124,12 +131,12 @@ public sealed class TcpCommunication : IDisposable
             }
             catch (OperationCanceledException)
             {
-                logger.LogDebug("Canceled connection change detection.");
+                Log("Canceled connection change detection.");
                 return;
             }
             catch (Exception ex)
             {
-                logger.LogError($"Error in DetectConnectionChange: {ex.Message}");
+                Log($"Error in DetectConnectionChange: {ex.Message}");
             }
             await Task.Delay(100, cancellationToken);
         }
@@ -184,15 +191,15 @@ public sealed class TcpCommunication : IDisposable
 
     private async Task StartSocket(CancellationToken cancellationToken)
     {
-        logger.LogInformation($"Connecting to {host}:{port}...");
+        Log($"Connecting to {host}:{port}...", LogLevel.Information);
         await socket.ConnectAsync(host, port, cancellationToken);
-        logger.LogInformation($"Connected to {host}:{port}."); 
+        Log($"Connected to {host}:{port}.", LogLevel.Information); 
         await HandleConnectionChange(socket is { Connected: true }, cancellationToken);
     }
 
     private void ClearBuffer()
     {
-        logger.LogDebug("Clearing buffer...");
+        Log("Clearing buffer...");
         try
         {
             // Ensure the socket is available and connected
@@ -207,11 +214,11 @@ public sealed class TcpCommunication : IDisposable
             {
                 _ = socket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
             }
-            logger.LogDebug("Buffer cleared.");
+            Log("Buffer cleared.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unexpected error during buffer clearing.");
+            Log($"Unexpected error during buffer clearing: {ex}", LogLevel.Error);
         }
         finally
         {
@@ -219,15 +226,15 @@ public sealed class TcpCommunication : IDisposable
             socket.Blocking = true;
         }
     }
-    
+
     public async Task<string> SendCommand(string commandStr, CancellationToken cancellationToken, bool waitForSemaphore = true)
     {
         while (true)
         {
-            logger.LogTrace("Accessing semaphore for send command.");
+            Log("Accessing semaphore for send command.", LogLevel.Trace);
             if (waitForSemaphore)
             {
-                logger.LogTrace("Waiting for semaphore for send command.");
+                Log("Waiting for semaphore for send command.", LogLevel.Trace);
                 await GetConnectionSemaphore(cancellationToken);
             }
 
@@ -236,15 +243,15 @@ public sealed class TcpCommunication : IDisposable
             {
                 var commandBytes = Encoding.ASCII.GetBytes(commandStr);
                 await socketSendingSemaphore.WaitAsync(cancellationToken);
-                logger.LogInformation($"Sending command: {commandStr}");
+                Log($"Sending command: {commandStr}", LogLevel.Information);
                 ClearBuffer();
                 socket.Send(commandBytes);
-                logger.LogInformation($"Sent command: {commandStr}");
+                Log($"Sent command: {commandStr}", LogLevel.Information);
                 return GetResponse(cancellationToken);
             }
             catch (SocketException ex)
             {
-                logger.LogError($"SocketException while sending command: {ex.Message}");
+                Log($"SocketException while sending command: {ex.Message}", LogLevel.Error);
                 socketSendingSemaphoreReleasedAlready = true;
                 socketSendingSemaphore.Release();
                 await CreateNewSocket(host, port, cancellationToken);
@@ -265,7 +272,7 @@ public sealed class TcpCommunication : IDisposable
     {
         var bytesRead = socket.Receive(buffer);
         var rawResponse = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-        logger.LogInformation($"Received response: {rawResponse}");
+        Log($"Received response: {rawResponse}", LogLevel.Information);
         return rawResponse;
     }
     
@@ -280,7 +287,7 @@ public sealed class TcpCommunication : IDisposable
         }
         catch (SocketException ex)
         {
-            logger.LogError($"Error while closing the socket: {ex.Message}");
+            Log($"Error while closing the socket: {ex.Message}", LogLevel.Error);
         }
         finally
         {

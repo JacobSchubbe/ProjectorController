@@ -95,14 +95,13 @@ public class ProjectorController
             if (!startCommunicationSent)
             {
                 commandStr = $"{ProjectorCommandsDictionary[command]}";
+                return await tcpConnection.SendCommand(commandStr, CancellationToken.None, waitForSemaphore:false);
             }
-            else
-            {
-                return string.Empty;
-            }
+
+            return string.Empty;
         }
         
-        return await tcpConnection.SendCommand(commandStr, CancellationToken.None, waitForSemaphore:false);
+        return await tcpConnection.SendCommand(commandStr, CancellationToken.None);
     }
     
     private async Task SendCommandResponseToClients(ProjectorCommands commandType, string response)
@@ -140,6 +139,12 @@ public class ProjectorController
 
     private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
     {
+        if (string.IsNullOrEmpty(rawResponse))
+        {
+            logger.LogWarning("Query response for {$queryType} was empty.", queryType.ToString());
+            return;
+        }
+        
         logger.LogTrace("Sending query response. QueryType: {$queryType} Raw response: {rawResponse}", queryType, rawResponse);
         switch (queryType)
         {
