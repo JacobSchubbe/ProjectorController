@@ -204,7 +204,7 @@ public class ProjectorController
 
     private async Task SendQueryResponse<T>(ProjectorCommands queryType, T status)
     {
-        logger.LogInformation($"Sending query response: {status.ToString()} for query {queryType.ToString()}");
+        logger.LogInformation($"Sending query response: {status?.ToString()} for query {queryType.ToString()}");
         await hub.Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
         {
             queryType, currentStatus = status

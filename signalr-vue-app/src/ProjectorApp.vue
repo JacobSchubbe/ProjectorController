@@ -91,6 +91,7 @@ import TvCommandsTab from "@/Views/TVControlButtonLayout.vue";
 import VolumeSlider from "@/components/VolumeSlider.vue";
 import { useProjector } from "@/composables/useProjector";
 import * as adbConstants from "@/Constants/AdbConstants";
+import * as hdmiSwitchConstants from "@/Constants/HdmiSwitchConstants";
 
 // Reactive variable to store available height
 const availableHeight = ref(0);
@@ -132,10 +133,11 @@ const {
 } = useProjector();
 
 const inputOptions = [
-  { label: "Smart TV", value: 1 },
-  { label: "Cable TV", value: 2 },
-  { label: "Nintendo Switch", value: 3 },
-  { label: "Steam Link", value: 4 },
+  { label: "Smart TV", value: hdmiSwitchConstants.Inputs.SmartTV },
+  { label: "Cable TV", value: hdmiSwitchConstants.Inputs.CableTV },
+  { label: "Nintendo Switch", value: hdmiSwitchConstants.Inputs.NintendoSwitch },
+  { label: "Steam Link", value: hdmiSwitchConstants.Inputs.SteamLink },
+  { label: "Open Hdmi", value: hdmiSwitchConstants.Inputs.OpenHdmi },
 ];
 
 const tabs = ref([

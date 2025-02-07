@@ -6,28 +6,28 @@ namespace ProjectController.Controllers.HdmiSwitch;
 
 public class HdmiSwitchController
 {
+    private readonly ILogger<HdmiSwitchController> logger;
     private readonly SerialCommunication serialCommunication;
     private readonly IHubContext<GUIHub> hub;
-    private string portName = "/dev/ttyUSB0"; // Replace with the correct COM port for your device
-    private int baudRate = 19200;     // The desired baud rate (19200)
-    private int dataBits = 8;         // Number of data bits (8)
-    private Parity parity = Parity.None;      // Parity setting (None)
-    private StopBits stopBits = StopBits.One; // Stop bits setting (1 stop bit)
-    private Handshake handshake = Handshake.None; // Flow control (None)
-    
-    public HdmiSwitchController(SerialCommunication serialCommunication, IHubContext<GUIHub> hub)
+    private const string portName0 = "/dev/ttyUSB0"; // Replace with the correct COM port for your device
+    private const string portName1 = "/dev/ttyUSB1"; // Replace with the correct COM port for your device
+    private const BaudRate baudRate = BaudRate.Baud19200; // The desired baud rate (19200)
+    private const DataBits dataBits = DataBits.Eight; // Number of data bits (8)
+    private const Parity parity = Parity.None; // Parity setting (None)
+    private const StopBits stopBits = StopBits.One; // Stop bits setting (1 stop bit)
+    private const Handshake handshake = Handshake.None; // Flow control (None)
+    private byte[] endOfLineBytes = { 0x0A, 0x0D }; // End of line bytes [0x0A, 0x0D];
+    public HdmiSwitchController(ILogger<HdmiSwitchController> logger, SerialCommunication serialCommunication, IHubContext<GUIHub> hub)
     {
+        this.logger = logger;
         this.serialCommunication = serialCommunication;
         this.hub = hub;
-        serialCommunication.Connect(portName, baudRate, dataBits, parity, stopBits, handshake, 0x04).Wait();
+        serialCommunication.StartCommunication(new[] {portName0, portName1}, baudRate, dataBits, parity, stopBits, handshake, endOfLineBytes);
     }
 
-    public string SetInputHdmi(int input)
+    public string SetInputHdmi(Inputs input)
     {
-        if (input is < 1 or > 4)
-            throw new ArgumentOutOfRangeException(nameof(input), "Input must be between 1 and 4");
-
-        var command = $"sw i 0{input}"; // it says [Enter] so maybe a \r?
+        var command = $"sw i0{(int)input}";
         WriteCommand(command);
         return ReadResponseAsString();
     }
@@ -98,9 +98,34 @@ public class HdmiSwitchController
         serialCommunication.WriteCommand($"{command}\r");
     }
 
-    private string ReadResponseAsString()
+    private string ReadResponseAsString(bool isReadCommand = false)
     {
-        return serialCommunication.ReadResponseAsString();
+        var response = string.Empty;
+
+        if (!isReadCommand)
+        {
+            while (true)
+            {
+                try
+                {
+                    response += serialCommunication.ReadOneLineOfResponseAsString();
+                    if (string.IsNullOrEmpty(response))
+                        return response;
+                }
+                catch (TimeoutException)
+                {
+                    logger.LogInformation("Response to command timed out. Response: {response}", response);
+                    return response;
+                }
+            }
+        }
+        
+        for (var i = 1; i <= 6; i++)
+        {
+            response += $"{serialCommunication.ReadOneLineOfResponseAsString()}\n";
+        }
+        logger.LogInformation("Response to read command: {response}", response);
+        return response;
     }
     
     public enum SwitchMode

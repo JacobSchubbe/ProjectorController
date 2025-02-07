@@ -1,6 +1,7 @@
 import { reactive, computed } from "vue";
 import { SignalRInstance } from "@/SignalRServiceManager";
 import * as projectorConstants from "@/Constants/ProjectorConstants";
+import * as hdmiSwitchConstants from "@/Constants/HdmiSwitchConstants";
 import * as adbConstants from "@/Constants/AdbConstants";
 import * as tvConstants from "@/Constants/TVConstants";
 
@@ -23,7 +24,7 @@ export function useProjector() {
   const buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV = computed(() => {
     return buttonDisabledWhenPoweredOff.value ||
       !state.AndroidTVConnected ||
-      state.selectedInput !== projectorConstants.ProjectorCommands.SystemControlSourceHDMI3;
+      state.selectedInput !== hdmiSwitchConstants.Inputs.SmartTV;
   });
   
   const handlePowerToggle = (isPoweredOn: boolean) => {

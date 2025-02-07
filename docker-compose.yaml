@@ -23,5 +23,6 @@ services:
     devices:
       - /dev/lirc0:/dev/lirc0 # Maps the LIRC device
       - /dev/ttyUSB0:/dev/ttyUSB0
+      - /dev/ttyUSB1:/dev/ttyUSB1
     privileged: true # Grants elevated privileges to access host hardware
     restart: always

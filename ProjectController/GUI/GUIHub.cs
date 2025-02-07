@@ -47,11 +47,18 @@ public class GUIHub : Hub
         await projectorConnection.SetTargetVolume(volume);
     }
     
-    public Task ReceiveHdmiInput(int input)
+    public async Task ReceiveHdmiInput(Inputs input)
     {
-        logger.LogTrace($"Received hdmi input: {input}");
-        hdmiSwitchController.SetInputHdmi(input);
-        return Task.CompletedTask;
+        logger.LogTrace("Received hdmi input: {$input}", input);
+        if (input == Inputs.SmartTV)
+        {
+            await ReceiveProjectorCommand(ProjectorCommands.SystemControlSourceHDMI3);
+        }
+        else
+        {
+            await ReceiveProjectorCommand(ProjectorCommands.SystemControlSourceHDMI1);
+            hdmiSwitchController.SetInputHdmi(input);
+        }
     }
     
     public async Task ReceiveHdmiInputQuery()
