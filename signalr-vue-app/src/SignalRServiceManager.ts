@@ -16,6 +16,7 @@ export type QueryResponse = {
 
 type IsConnectedToProjectorCallback = (isConnected: boolean) => void;
 type IsConnectedToAndroidTVCallback = (isConnected: boolean) => void;
+type OnHandleHdmiInputQuery = (response: Number) => void;
 type OnQueryResponseReceived = (response: QueryResponse) => void;
 type ConnectionStatusUpdater = (isConnected: boolean) => void;
 
@@ -31,6 +32,7 @@ class SignalRService {
 
     private isConnectedToProjectorCallback?: IsConnectedToProjectorCallback;
     private isConnectedToAndroidTVCallback?: IsConnectedToAndroidTVCallback;
+    private onHandleHdmiInputQueryCallback?: OnHandleHdmiInputQuery;
     private onProjectorQueryResponseReceivedCallback?: OnQueryResponseReceived;
     private connectionStatusUpdater?: ConnectionStatusUpdater;
 
@@ -48,6 +50,7 @@ class SignalRService {
     async initialize(
         isConnectedToProjectorCallback: IsConnectedToProjectorCallback,
         isConnectedToAndroidTVCallback: IsConnectedToAndroidTVCallback,
+        onHandleHdmiInputQuery: OnHandleHdmiInputQuery,
         onProjectorQueryResponseReceivedCallback: OnQueryResponseReceived,
         connectionStatusUpdater: ConnectionStatusUpdater) 
     {
@@ -55,6 +58,7 @@ class SignalRService {
 
         this.isConnectedToProjectorCallback = isConnectedToProjectorCallback;
         this.isConnectedToAndroidTVCallback = isConnectedToAndroidTVCallback;
+        this.onHandleHdmiInputQueryCallback = onHandleHdmiInputQuery;
         this.onProjectorQueryResponseReceivedCallback = onProjectorQueryResponseReceivedCallback;
         this.connectionStatusUpdater = connectionStatusUpdater;
 
@@ -63,6 +67,7 @@ class SignalRService {
         this.connection.on('IsConnectedToProjector', this.handleProjectorConnectionStatus);
         this.connection.on('IsConnectedToAndroidTVQuery', this.handleAndroidTVConnectionStatus);
         this.connection.on('ReceiveProjectorQueryResponse', this.handleProjectorQueryResponse);
+        this.connection.on('ReceiveHdmiInputQueryResponse', this.handleHdmiQueryResponse);
 
         this.connection.onclose(async () => {
             console.log('SignalR connection closed. Attempting to reconnect...');
@@ -122,6 +127,10 @@ class SignalRService {
         this.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlSourceQuery);
         this.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlVolumeQuery);
     }
+    
+    queryForInitialHdmiStatuses = () => {
+        this.sendHdmiQuery()
+    }
 
     queryForInitialAndroidTVStatuses = () => {
         // this.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlSourceQuery);
@@ -161,6 +170,11 @@ class SignalRService {
         this.isConnectedToProjectorCallback?.(isConnected);
     };
 
+    private handleHdmiQueryResponse = (input: Number): void => {
+        console.log(`Received hdmi input query response: ${input}`);
+        this.onHandleHdmiInputQueryCallback?.(input);
+    }
+    
     private handleAndroidTVConnectionStatus = (isConnected: boolean): void => {
         console.log(`AndroidTV connected status: ${isConnected}`);
         this.isConnectedToAndroidTVCallback?.(isConnected);
@@ -190,6 +204,16 @@ class SignalRService {
     sendProjectorCommand(command: projectorConstants.ProjectorCommands): void {
         console.log(`Sending projector command: ${command}`);
         this.invoke('ReceiveProjectorCommand', command);
+    }
+
+    sendHdmiCommand(input: projectorConstants.ProjectorCommands): void {
+        console.log(`Sending hdmi input: ${input}`);
+        this.invoke('ReceiveHdmiInput', input);
+    }
+
+    sendHdmiQuery(): void {
+        console.log(`Sending hdmi input query`);
+        this.invoke('ReceiveHdmiInputQuery');
     }
 
     sendProjectorQuery(command: projectorConstants.ProjectorCommands): void {

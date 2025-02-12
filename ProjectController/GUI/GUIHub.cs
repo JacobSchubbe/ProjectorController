@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using ProjectController.Controllers.ADB;
+using ProjectController.Controllers.HdmiSwitch;
 using ProjectController.Controllers.Projector;
 using ProjectController.Controllers.TVControls;
 using static ProjectController.Controllers.Projector.ProjectorConstants;
@@ -9,12 +10,18 @@ public class GUIHub : Hub
     private readonly ILogger<GUIHub> logger;
     private readonly ProjectorController projectorConnection;
     private readonly AndroidTVController adbConnection;
+    private readonly HdmiSwitchController hdmiSwitchController;
     
-    public GUIHub(ILogger<GUIHub> logger, ProjectorController projectorConnection, AndroidTVController adbConnection)
+    public GUIHub(
+        ILogger<GUIHub> logger, 
+        ProjectorController projectorConnection, 
+        AndroidTVController adbConnection,
+        HdmiSwitchController hdmiSwitchController)
     {
         this.logger = logger;
         this.projectorConnection = projectorConnection;
         this.adbConnection = adbConnection;
+        this.hdmiSwitchController = hdmiSwitchController;
     }
 
     public async Task Ping()
@@ -38,6 +45,26 @@ public class GUIHub : Hub
     public async Task ReceiveProjectorVolumeSet(int volume)
     {
         await projectorConnection.SetTargetVolume(volume);
+    }
+    
+    public async Task ReceiveHdmiInput(Inputs input)
+    {
+        logger.LogTrace("Received hdmi input: {$input}", input);
+        if (input == Inputs.SmartTV)
+        {
+            await ReceiveProjectorCommand(ProjectorCommands.SystemControlSourceHDMI3);
+        }
+        else
+        {
+            await ReceiveProjectorCommand(ProjectorCommands.SystemControlSourceHDMI1);
+        }
+        await hdmiSwitchController.SetInputHdmi(input);
+    }
+    
+    public async Task ReceiveHdmiInputQuery()
+    {
+        logger.LogTrace("Received hdmi input query.");
+        await hdmiSwitchController.ReadCurrentConfiguration();
     }
     
     public async Task ReceiveProjectorCommand(ProjectorCommands command)

@@ -1,6 +1,7 @@
 import { reactive, computed } from "vue";
 import { SignalRInstance } from "@/SignalRServiceManager";
 import * as projectorConstants from "@/Constants/ProjectorConstants";
+import * as hdmiSwitchConstants from "@/Constants/HdmiSwitchConstants";
 import * as adbConstants from "@/Constants/AdbConstants";
 import * as tvConstants from "@/Constants/TVConstants";
 
@@ -23,7 +24,7 @@ export function useProjector() {
   const buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV = computed(() => {
     return buttonDisabledWhenPoweredOff.value ||
       !state.AndroidTVConnected ||
-      state.selectedInput !== projectorConstants.ProjectorCommands.SystemControlSourceHDMI3;
+      state.selectedInput !== hdmiSwitchConstants.Inputs.SmartTV;
   });
   
   const handlePowerToggle = (isPoweredOn: boolean) => {
@@ -55,6 +56,11 @@ export function useProjector() {
       }
     }
   }
+  
+  const handleHdmiInputQuery = (currentStatus:Number) => {
+    console.log(`Hdmi switch input query response: ${currentStatus as number}`);
+    state.selectedInput = currentStatus as number;
+  }
 
   const handleProjectorQueryResponse = (queryType:Number, currentStatus:Number) => {
     switch (queryType) {
@@ -64,7 +70,13 @@ export function useProjector() {
         break;
       case projectorConstants.ProjectorCommands.SystemControlSourceQuery:
         console.log(`Projector Source query response: ${currentStatus}`);
-        state.selectedInput = currentStatus as projectorConstants.ProjectorCommands;
+        if (currentStatus as projectorConstants.ProjectorCommands == projectorConstants.ProjectorCommands.SystemControlSourceHDMI1) {
+          SignalRInstance.queryForInitialHdmiStatuses();
+        }
+        else if (currentStatus as projectorConstants.ProjectorCommands == projectorConstants.ProjectorCommands.SystemControlSourceHDMI3) {
+          state.selectedInput = 0;
+        }
+        
         break;
       case projectorConstants.ProjectorCommands.SystemControlPowerQuery:
         console.log(`Projector Power query response: ${currentStatus}`);
@@ -141,7 +153,7 @@ export function useProjector() {
 
   const handleDropdownChange = () => {
     console.log(`Selected Input: ${state.selectedInput}`);
-    SignalRInstance.sendProjectorCommand(state.selectedInput);
+    SignalRInstance.sendHdmiCommand(state.selectedInput);
     console.log(`Command sent: ${state.selectedInput}`);
   };
 
@@ -156,6 +168,7 @@ export function useProjector() {
     handleClickAndroidOpenAppCommand,
     handleProjectorConnectionStateChange,
     handleAndroidTVConnectionStateChange,
+    handleHdmiInputQuery,
     handleProjectorQueryResponse,
     handleGUIConnectionStateChange,
     handlePowerToggle

@@ -2,7 +2,7 @@
   <div>
     <label>{{ label }}</label>
     <select v-model="selected" @change="onChange">
-      <option v-for="option in options" :key="option.value" :value="option.value">
+      <option v-for="option in options" :key="option.value" :value="option.value" :disabled="option.disabled">
         {{ option.label }}
       </option>
     </select>

@@ -6,7 +6,7 @@
         <Dropdown
             label="Select Input:"
             v-model="state.selectedInput"
-            :options="inputOptions"
+            :options="inputOptionsComputed"
             @change="handleDropdownChange"
         />
       </div>
@@ -80,7 +80,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, computed, ref } from "vue";
 import { SignalRInstance } from "./SignalRServiceManager";
 import * as projectorConstants from "./Constants/ProjectorConstants";
 import Dropdown from "@/components/DropDown.vue";
@@ -91,6 +91,7 @@ import TvCommandsTab from "@/Views/TVControlButtonLayout.vue";
 import VolumeSlider from "@/components/VolumeSlider.vue";
 import { useProjector } from "@/composables/useProjector";
 import * as adbConstants from "@/Constants/AdbConstants";
+import * as hdmiSwitchConstants from "@/Constants/HdmiSwitchConstants";
 
 // Reactive variable to store available height
 const availableHeight = ref(0);
@@ -126,14 +127,25 @@ const {
   handlePowerToggle,
   handleProjectorConnectionStateChange,
   handleAndroidTVConnectionStateChange,
+  handleHdmiInputQuery,
   handleProjectorQueryResponse,
   handleGUIConnectionStateChange
 } = useProjector();
 
 const inputOptions = [
-  { label: "TV/Switch", value: projectorConstants.ProjectorCommands.SystemControlSourceHDMI1 },
-  { label: "SmartTV", value: projectorConstants.ProjectorCommands.SystemControlSourceHDMI3 },
+  { label: "Smart TV", value: hdmiSwitchConstants.Inputs.SmartTV },
+  { label: "Cable TV", value: hdmiSwitchConstants.Inputs.CableTV },
+  { label: "Nintendo Switch", value: hdmiSwitchConstants.Inputs.NintendoSwitch },
+  { label: "Steam Link", value: hdmiSwitchConstants.Inputs.SteamLink },
+  { label: "Open Hdmi", value: hdmiSwitchConstants.Inputs.OpenHdmi },
 ];
+
+const inputOptionsComputed = computed(() => {
+  return inputOptions.map((option) => ({
+    ...option,
+    disabled: state.ProjectorPoweredOn !== projectorConstants.PowerStatusGui.On
+  }));
+});
 
 const tabs = ref([
   { label: "SmartTV", value: "adb", icon: "fas fa-keyboard" },
@@ -163,6 +175,7 @@ onMounted(async () => {
   await SignalRInstance.initialize(
       (isConnected) => { handleProjectorConnectionStateChange(isConnected); },
       (isConnected) => { handleAndroidTVConnectionStateChange(isConnected); },
+      (response) => { handleHdmiInputQuery(response); },
       (response) => { handleProjectorQueryResponse(response.queryType, response.currentStatus); },
       (connectionStatus) => { handleGUIConnectionStateChange(connectionStatus); }
   );
