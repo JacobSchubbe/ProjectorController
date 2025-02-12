@@ -69,6 +69,14 @@ export function useProjector() {
         state.targetVolume = currentStatus as number;
         break;
       case projectorConstants.ProjectorCommands.SystemControlSourceQuery:
+        console.log(`Projector Source query response: ${currentStatus}`);
+        if (currentStatus as projectorConstants.ProjectorCommands == projectorConstants.ProjectorCommands.SystemControlSourceHDMI1) {
+          SignalRInstance.queryForInitialHdmiStatuses();
+        }
+        else if (currentStatus as projectorConstants.ProjectorCommands == projectorConstants.ProjectorCommands.SystemControlSourceHDMI3) {
+          state.selectedInput = 0;
+        }
+        
         break;
       case projectorConstants.ProjectorCommands.SystemControlPowerQuery:
         console.log(`Projector Power query response: ${currentStatus}`);

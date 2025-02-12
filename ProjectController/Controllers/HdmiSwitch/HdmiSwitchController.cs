@@ -25,50 +25,57 @@ public class HdmiSwitchController
         serialCommunication.StartCommunication(new[] {portName0, portName1}, baudRate, dataBits, parity, stopBits, handshake, endOfLineBytes);
     }
 
-    public string SetInputHdmi(Inputs input)
+    public async Task SetInputHdmi(Inputs input)
     {
         var command = $"sw i0{(int)input}";
         WriteCommand(command);
-        return ReadResponseAsString();
+        var response = ReadResponseAsString();
+        if (IsResponseValid(response))
+        {
+            await hub.Clients.All.SendAsync("ReceiveHdmiInputQueryResponse", GetInputFromInputCommand(response));
+        }
     }
 
-    public string ToggleDisplayOn(bool isOn)
+    public void ToggleDisplayOn(bool isOn)
     {
         var command = $"sw {(isOn ? "on" : "off")}";
         WriteCommand(command);
-        return ReadResponseAsString();
+        var response = ReadResponseAsString();
     }
 
-    public string SwitchToNextOrPreviousInput(bool isNext)
+    public void SwitchToNextOrPreviousInput(bool isNext)
     {
         var command = $"sw {(isNext ? "+" : "-")}";
         WriteCommand(command);
-        return ReadResponseAsString();
+        var response = ReadResponseAsString();
     }
 
-    public string EnableHotPlugDetection(bool isEnabled)
+    public void EnableHotPlugDetection(bool isEnabled)
     {
         var command = $"hpd {(isEnabled ? "on" : "off")}";
         WriteCommand(command);
-        return ReadResponseAsString();
+        var response = ReadResponseAsString();
     }
 
-    public async Task<string> ReadCurrentConfiguration()
+    public async Task ReadCurrentConfiguration()
     {
         var command = "read";
         WriteCommand(command);
-        await hub.Clients.All.SendAsync("handleHdmiInputQuery", 3);
-        return ReadResponseAsString();
+        var response = ReadResponseAsString(isReadCommand: true);
+        if (IsResponseValid(response))
+        {
+            await hub.Clients.All.SendAsync("ReceiveHdmiInputQueryResponse", GetInputFromReadResponse(response));
+        }
     }
 
-    public string ResetToFactoryDefaults()
+    public void ResetToFactoryDefaults()
     {
         var command = $"reset";
         WriteCommand(command);
-        return ReadResponseAsString();
+        var response = ReadResponseAsString();
     }
 
-    public string SetSwitchMode(SwitchMode mode, int? input = null, bool? goToOn = null)
+    public void SetSwitchMode(SwitchMode mode, int? input = null, bool? goToOn = null)
     {
         switch (mode)
         {
@@ -90,7 +97,7 @@ public class HdmiSwitchController
                 throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
         }
         
-        return ReadResponseAsString();
+        var response = ReadResponseAsString();
     }
 
     private void WriteCommand(string command)
@@ -98,9 +105,9 @@ public class HdmiSwitchController
         serialCommunication.WriteCommand($"{command}\r");
     }
 
-    private string ReadResponseAsString(bool isReadCommand = false)
+    private List<string> ReadResponseAsString(bool isReadCommand = false)
     {
-        var response = string.Empty;
+        var response = new List<string>();
 
         if (!isReadCommand)
         {
@@ -108,24 +115,55 @@ public class HdmiSwitchController
             {
                 try
                 {
-                    response += serialCommunication.ReadOneLineOfResponseAsString();
-                    if (string.IsNullOrEmpty(response))
-                        return response;
+                    // Response e.g.: sw i01 Command OK\n\r
+                    logger.LogTrace("Trying to read a single line from the serial port.");
+                    response.Add(serialCommunication.ReadOneLineOfResponseAsString());
                 }
                 catch (TimeoutException)
                 {
-                    logger.LogInformation("Response to command timed out. Response: {response}", response);
-                    return response;
+                    logger.LogInformation("Response to command timed out. Response: {response}", string.Join(" ", response));
                 }
+                return response;
             }
         }
         
+        // Response e.g.: read Command OK\n\r Input:port 2\n\r Output:ON\n\r Mode:Next\n\r Goto:OFF\n\r F/W:V1.1.101\n\r
         for (var i = 1; i <= 6; i++)
         {
-            response += $"{serialCommunication.ReadOneLineOfResponseAsString()}\n";
+            logger.LogTrace("Trying to read line {i} from the serial port.", i);
+            response.Add($"{serialCommunication.ReadOneLineOfResponseAsString()}\n");
         }
-        logger.LogInformation("Response to read command: {response}", response);
+        logger.LogInformation("Response to read command: {response}", string.Join(" ", response));
         return response;
+    }
+
+    private bool IsResponseValid(List<string> response)
+    {
+        return response[0].Contains("Command OK");
+    }
+
+    private Inputs GetInputFromReadResponse(List<string> response)
+    {
+        if (response.Count < 6) 
+            throw new InvalidOperationException($"Read response contained only {response.Count} line(s).");
+
+        var inputLine = response[1].Split(':');
+        if (inputLine.Length != 2)
+            throw new InvalidOperationException($"Read response contained invalid input line: {response[1]}");
+        
+        var input = (Inputs)int.Parse(inputLine[1].Split(" ")[1].Trim());
+        logger.LogInformation("Input from read response: {$input}", input);
+        return input;
+    }
+    
+    private Inputs GetInputFromInputCommand(List<string> response)
+    {
+        if (response.Count >= 2)
+            throw new InvalidOperationException($"Input command response contained more than 1 line: {response.Count} lines");
+        
+        var input = (Inputs)int.Parse(response[0].Split(' ')[1][1..]);
+        logger.LogInformation("Input from input command response: {$input}", input);
+        return input;
     }
     
     public enum SwitchMode

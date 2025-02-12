@@ -180,7 +180,6 @@ public class ProjectorController
                 await SendQueryResponse(queryType, currentStatus);
                 break;
         }
-        
     }
 
     private async Task UpdateAllClients(ProjectorCommands commandType)

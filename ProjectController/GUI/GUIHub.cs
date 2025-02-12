@@ -57,14 +57,13 @@ public class GUIHub : Hub
         else
         {
             await ReceiveProjectorCommand(ProjectorCommands.SystemControlSourceHDMI1);
-            hdmiSwitchController.SetInputHdmi(input);
         }
+        await hdmiSwitchController.SetInputHdmi(input);
     }
     
     public async Task ReceiveHdmiInputQuery()
     {
-        logger.LogTrace($"Received hdmi input query.");
-        await Clients.All.SendAsync("ReceiveHdmiInputQueryResponse", 3);
+        logger.LogTrace("Received hdmi input query.");
         await hdmiSwitchController.ReadCurrentConfiguration();
     }
     

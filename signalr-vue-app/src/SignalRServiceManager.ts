@@ -121,7 +121,6 @@ class SignalRService {
     queryForInitialConnectionStatuses(): void {
         this.getIsConnectedToProjector();
         this.getIsConnectedToAndroidTV();
-        this.queryForInitialHdmiStatuses();
     }
 
     queryForInitialProjectorStatuses = () => {
