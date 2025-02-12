@@ -6,7 +6,7 @@
         <Dropdown
             label="Select Input:"
             v-model="state.selectedInput"
-            :options="inputOptions"
+            :options="inputOptionsComputed"
             @change="handleDropdownChange"
         />
       </div>
@@ -80,7 +80,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, computed, ref } from "vue";
 import { SignalRInstance } from "./SignalRServiceManager";
 import * as projectorConstants from "./Constants/ProjectorConstants";
 import Dropdown from "@/components/DropDown.vue";
@@ -139,6 +139,13 @@ const inputOptions = [
   { label: "Steam Link", value: hdmiSwitchConstants.Inputs.SteamLink },
   { label: "Open Hdmi", value: hdmiSwitchConstants.Inputs.OpenHdmi },
 ];
+
+const inputOptionsComputed = computed(() => {
+  return inputOptions.map((option) => ({
+    ...option,
+    disabled: state.ProjectorPoweredOn !== projectorConstants.PowerStatusGui.On
+  }));
+});
 
 const tabs = ref([
   { label: "SmartTV", value: "adb", icon: "fas fa-keyboard" },
