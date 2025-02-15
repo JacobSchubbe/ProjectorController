@@ -29,7 +29,31 @@ public sealed class TcpCommunication : IDisposable
     
     private void Log(string message, LogLevel logLevel = LogLevel.Debug)
     {
-        logger.Log(logLevel, logLevel is LogLevel.Trace or LogLevel.Error or LogLevel.Critical ? message + $"Stack Trace: {Environment.StackTrace}" : message);
+        switch (logLevel)
+        {
+            case LogLevel.Trace:
+                logger.LogTrace(message);
+                break;
+            case LogLevel.Debug:
+                logger.LogDebug(message);
+                break;
+            case LogLevel.Information:
+                logger.LogInformation(message);
+                break;
+            case LogLevel.Warning:
+                logger.LogWarning(message);
+                break;
+            case LogLevel.Error:
+                logger.LogError(message);
+                break;
+            case LogLevel.Critical:
+                logger.LogCritical(message);
+                break;
+            case LogLevel.None:
+            default:
+                break;
+        }
+        // logger.Log(logLevel, logLevel is LogLevel.Trace or LogLevel.Error or LogLevel.Critical ? message + $"Stack Trace: {Environment.StackTrace}" : message);
     }
     
 
@@ -231,10 +255,10 @@ public sealed class TcpCommunication : IDisposable
     {
         while (true)
         {
-            Log("Accessing semaphore for send command.", LogLevel.Trace);
+            // Log("Accessing semaphore for send command.", LogLevel.Trace);
             if (waitForSemaphore)
             {
-                Log("Waiting for semaphore for send command.", LogLevel.Trace);
+                // Log("Waiting for semaphore for send command.", LogLevel.Trace);
                 await GetConnectionSemaphore(cancellationToken);
             }
 

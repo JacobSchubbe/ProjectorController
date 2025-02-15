@@ -13,8 +13,12 @@ public class ADBClient
 
     private event Func<string, Task>? disconnectEvent;
     private event Func<string, Task>? connectEvent;
+    private event Func<Task>? vpnDisconnectEvent;
+    private event Func<Task>? vpnConnectEvent;
     private bool lastConnectionStatus;
+    private bool lastVpnConnectedStatus;
     private readonly SemaphoreSlim connectionChangeCheckSemaphore = new(1, 1);
+    private readonly SemaphoreSlim vpnConnectionChangeCheckSemaphore = new(1, 1);
     
     private const string ADB_PATH_LINUX_ARM64 = "adb";
     private static readonly string ADB_PATH_DEVELOPMENT =
@@ -88,6 +92,16 @@ public class ADBClient
         connectEvent += callback;
     }
     
+    public void RegisterOnVpnDisconnect(Func<Task> callback)
+    {
+        vpnDisconnectEvent += callback;
+    }
+    
+    public void RegisterOnVpnConnect(Func<Task> callback)
+    {
+        vpnConnectEvent += callback;
+    }
+    
     public async Task DetectConnectionChange(string ip, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
@@ -109,13 +123,33 @@ public class ADBClient
         }
     }
 
+    public async Task DetectVpnConnectionChange(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await CheckVpnConnectionChange(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Log("Canceled vpn connection change detection.");
+                return;
+            }
+            catch (Exception ex)
+            {
+                Log($"Error in DetectVpnConnectionChange: {ex.Message}");
+            }
+            await Task.Delay(2000, cancellationToken);
+        }
+    }
+
     private async Task CheckConnectionChange(string ip, CancellationToken cancellationToken)
     {
         await connectionChangeCheckSemaphore.WaitAsync(cancellationToken);
         try
         {
-            GetDevices();
-            _selectedDevice = _devices.FirstOrDefault(x => x.StartsWith(ip));
+            GetDevicesAndSetSelectedDevice();
             var isConnected = IsConnected(ip);
             if (isConnected != lastConnectionStatus)
             {
@@ -135,6 +169,33 @@ public class ADBClient
         finally
         {
             connectionChangeCheckSemaphore.Release();
+        }
+    }
+    
+    private async Task CheckVpnConnectionChange(CancellationToken cancellationToken)
+    {
+        await vpnConnectionChangeCheckSemaphore.WaitAsync(cancellationToken);
+        try
+        { 
+            var isConnected = IsSurfsharkVpnConnected();
+            if (isConnected != lastVpnConnectedStatus)
+            {
+                if (isConnected)
+                {
+                    Log("VPN connected.", LogLevel.Trace);
+                    await (vpnConnectEvent?.Invoke() ?? Task.CompletedTask);
+                }
+                else
+                {
+                    Log("VPN disconnected.", LogLevel.Trace);
+                    await (vpnDisconnectEvent?.Invoke() ?? Task.CompletedTask);
+                }
+                lastVpnConnectedStatus = isConnected;
+            }
+        }
+        finally
+        {
+            vpnConnectionChangeCheckSemaphore.Release();
         }
     }
     
@@ -181,8 +242,7 @@ public class ADBClient
                     string result = ExecuteCommand($"connect {ip}", includeSelectedSerial: false);
                     if (result.Contains("connected"))
                     {
-                        GetDevices();
-                        _selectedDevice = _devices.FirstOrDefault(x => x.StartsWith(ip));
+                        GetDevicesAndSetSelectedDevice();
                         Log($"Device {_selectedDevice} connected successfully to {ip}.");
                         return true;
                     }
@@ -211,6 +271,11 @@ public class ADBClient
         return _devices.Any(device => device.StartsWith(ip));
     }
 
+    public bool IsVpnConnected()
+    {
+        return IsSurfsharkVpnConnected();
+    }
+
     public bool Disconnect()
     {
         Log("Disconnecting device...");
@@ -229,6 +294,12 @@ public class ADBClient
         }
     }
 
+    private void GetDevicesAndSetSelectedDevice()
+    {
+        GetDevices();
+        _selectedDevice = _devices.FirstOrDefault();
+    }
+    
     private List<string> GetDevices()
     {
         // Log("Getting connected devices...", LogLevel.Trace);
@@ -419,17 +490,19 @@ public class ADBClient
         }
     }
     
-    public string ExecuteShellCommand(string command)
+    public string ExecuteShellCommand(string command, LogLevel? logLevel = LogLevel.Debug)
     {
+        GetDevicesAndSetSelectedDevice();
         if (_selectedDevice == null)
         {
             throw new InvalidOperationException("No device is selected.");
         }
-        return ExecuteCommand($"shell {command}");
+        return ExecuteCommand($"shell {command}", logLevel: logLevel);
     }
     
-    public Task SendKeyEventInput(KeyCodes keycode, bool longPress = false)
+    public Task<string> SendKeyEventInput(KeyCodes keycode, bool longPress = false)
     {
+        GetDevicesAndSetSelectedDevice();
         if (_selectedDevice == null)
         {
             throw new InvalidOperationException("No device is selected.");
@@ -443,12 +516,12 @@ public class ADBClient
         }
 
         logger.LogDebug($"Sending key event: {command}");
-        ExecuteShellCommand(command);
-        return Task.CompletedTask;
+        return Task.FromResult(ExecuteShellCommand(command));
     }
     
     public void SendTextInput(string text, bool encodeSpaces = true)
     {
+        GetDevicesAndSetSelectedDevice();
         if (_selectedDevice == null)
         {
             throw new InvalidOperationException("No device is selected.");
@@ -459,5 +532,29 @@ public class ADBClient
 
         // Execute input text command
         ExecuteShellCommand($"input text {processedText}");
+    }
+    
+    private bool IsSurfsharkVpnConnected()
+    {
+        var adbCommand = "dumpsys connectivity | grep -i vpn";
+        try
+        {
+            var output = ExecuteShellCommand(adbCommand, null);
+            if (output.Contains("VPN CONNECTED") || output.Contains("tunnel"))
+            {
+                Log("Surfshark Log detected an active VPN connection.");
+                return true;
+            }
+            else
+            {
+                Log("No Surfshark logs indicating an active VPN connection.");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log("An error occurred while checking Surfshark logs: " + ex.Message);
+            return false;
+        }
     }
 }
