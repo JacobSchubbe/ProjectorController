@@ -446,21 +446,22 @@ input:disabled + .slider::before {
   background-color: #666; /* Grey out the knob when disabled */
 }
 
-
 .tab-container {
   animation: slideUp 0.6s ease-out; /* Slide-up animation when the component loads */
   position: fixed; /* Keep the tabs pinned at the bottom */
   bottom: 0; /* Align to the bottom of the page */
   width: 100%; /* Full width */
   max-width: 100%;
+  margin: 0;
+  padding: 0;
+  height: 20vh; /* Or dynamically calculated height */
   overflow: hidden;
   display: flex;               /* Use flexbox */
   flex-direction: column;      /* Stack rows vertically (column direction) */
   align-items: stretch;        /* Stretch rows to fill available space */
-  justify-content: space-around; /* Equal space between buttons */
-  background: linear-gradient(90deg, #3a3a3a, #262626); /* Subtle gradient background */
+  justify-content: stretch; /* Equal space between buttons */
+  background: #3a3a3a; /* Subtle gradient background */
   border-top: 1px solid #444; /* Optional: Top border as a divider */
-  padding: 10px 0; /* Padding for better spacing */
   z-index: 10; /* Ensure this section stays above other content */
 }
 
@@ -477,6 +478,7 @@ input:disabled + .slider::before {
   cursor: pointer; /* Indicate clickability */
   transition: all 0.3s ease; /* Smooth animation on hover/focus */
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+  height: 6vh;
 }
 
 .tab-button.active {
@@ -502,8 +504,6 @@ input:disabled + .slider::before {
   display: flex;                      /* Use flexbox for horizontal alignment */
   justify-content: center;            /* Center the volume buttons horizontally */
   align-items: center;                /* Align buttons vertically */
-  gap: 15px;                          /* Space between Volume + and Volume - */
-  padding: 10px 0;                    /* Padding for the row */
   border-bottom: 1px solid #666;      /* Divider between rows */
   background-color: #383838;          /* Optional: background color for better visibility */
 }
@@ -553,7 +553,5 @@ input:disabled + .slider::before {
     opacity: 1; /* Fully visible */
   }
 }
-
-
 
 </style>
