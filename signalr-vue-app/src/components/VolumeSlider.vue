@@ -6,7 +6,7 @@
         :onClick="decreaseVolume"
         class="volume-button"
     >
-      Volume<br/><br/>-
+      Volume -
     </ControlButton>
 
     <!-- Slider -->
@@ -26,7 +26,7 @@
         :onClick="increaseVolume"
         class="volume-button"
     >
-      Volume<br/><br/>+
+      Volume +
     </ControlButton>
   </div>
 </template>
@@ -124,6 +124,8 @@ export default defineComponent({
   font-size: 14px;
   font-weight: bold;
   transition: transform 0.2s, background-color 0.3s;
+  margin: 10px;
+  height: 10vh; /* Or dynamically calculated height */
 }
 
 .volume-button:disabled {
