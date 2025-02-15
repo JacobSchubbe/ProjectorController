@@ -17,6 +17,9 @@ public class AndroidTVController
         this.hub = hub;
         this.adbController = adbController;
         this.commandRunner = commandRunner;
+        adbController.AdbClient.RegisterOnDisconnect(OnDisconnected);
+        adbController.AdbClient.RegisterOnVpnConnect(() => SendQueryResponseToClients(KeyCodes.VpnStatusQuery, true.ToString()));
+        adbController.AdbClient.RegisterOnVpnDisconnect(() => SendQueryResponseToClients(KeyCodes.VpnStatusQuery, false.ToString()));
         _ = Start();
     }
 
@@ -59,6 +62,7 @@ public class AndroidTVController
     }
     
     public bool IsConnected => adbController.IsConnected();
+    public bool IsVpnConnected => adbController.IsVpnConnected();
 
     public async Task SendIsConnectedToAndroidTV(bool isConnected)
     {
@@ -68,15 +72,20 @@ public class AndroidTVController
 
     public async Task EnqueueCommand(KeyCodes command)
     {
-        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients, allowDuplicates:true);
+        await EnqueueCommand(command, false);
     }
     
     public async Task EnqueueLongPressCommand(KeyCodes command)
     {
+        await EnqueueCommand(command, true);
+    }
+
+    private async Task EnqueueCommand(KeyCodes command, bool isLongPress)
+    {
         await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients, allowDuplicates:true);
     }
     
-    public Task EnqueueOpenAppCommand(KeyCodes command)
+    public async Task EnqueueOpenAppCommand(KeyCodes command)
     {
         var app = (command) switch
         {
@@ -90,9 +99,8 @@ public class AndroidTVController
             _ => throw new NotImplementedException()
         };
         
-        adbController.OpenApp(app);
+        await adbController.OpenApp(app);
         // await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
-        return Task.CompletedTask;
     }
     
     public async Task EnqueueQuery(KeyCodes command)
@@ -100,32 +108,54 @@ public class AndroidTVController
         await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
     }
 
-    private Task SendCommandResponseToClients(KeyCodes commandType, string response)
+    private async Task SendCommandResponseToClients(KeyCodes commandType, string response)
     {
-        // logger.LogInformation($"Sending command response: {response}");
-        // await hub.Clients.All.SendAsync("ReceiveMessage", new
-        // {
-        //     message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
-        // });
-        return Task.CompletedTask;
+        logger.LogInformation($"Sending command response: {response}");
+        if (response == AdbConstants.AdbSuccess)
+        {
+            switch (commandType)
+            {
+                case KeyCodes.VpnOff:
+                case KeyCodes.VpnOn:
+                    await hub.Clients.All.SendAsync("ReceiveAndroidTVQueryResponse", new
+                    {
+                        KeyCodes.VpnStatusQuery, currentStatus = commandType
+                    });
+                    break;
+            }
+        }
+        else
+        {
+            await hub.Clients.All.SendAsync("ReceiveMessage", new
+            {
+                message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
+            });
+        }
     }
 
-    private Task SendQueryResponseToClients(KeyCodes queryType, string rawResponse)
+    private async Task SendQueryResponseToClients(KeyCodes queryType, string rawResponse)
     {
-        // logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
-        // await hub.Clients.All.SendAsync("ReceiveMessage", new
-        // {
-        //     message = $"System Control Query: {queryType} was successfully executed. Response: {rawResponse}"
-        // });
-        return Task.CompletedTask;
+        logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
+        switch (queryType)
+        {
+            case KeyCodes.VpnStatusQuery:
+            {
+                var isConnected = bool.Parse(rawResponse);
+                var response = isConnected ? KeyCodes.VpnOn : KeyCodes.VpnOff;
+                await hub.Clients.All.SendAsync("ReceiveAndroidTVQueryResponse", new
+                {
+                    queryType, currentStatus = response
+                });
+                break;
+            }
+        }
     }
 
     private async Task<string> SendCommand(KeyCodes command)
     {
         try
         {
-            await adbController.KeyCommands[command]();
-            return "Success";
+            return await adbController.KeyCommands[command]();
         }
         catch (Exception ex)
         {

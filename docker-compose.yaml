@@ -11,6 +11,7 @@ services:
         - VUE_APP_PORT=8081
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
+      - CUSTOMCONFIG__ENVIRONMENT=Production # Custom 'Environment' variable for your application
       - SERILOG__MINIMUMLEVEL__DEFAULT=Verbose # Set the default Serilog log level here
     ports:
       - "8081:80"

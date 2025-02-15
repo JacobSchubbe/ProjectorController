@@ -15,16 +15,31 @@
       <div class="header-section">
         <div class="toggle-container">
           <label class="toggle-label">
+            VPN
+          </label>
+          <ToggleSwitch
+              :isChecked="state.VPNConnected === projectorConstants.ToggleStatusGui.On"
+              :disabled="state.VPNConnected === projectorConstants.ToggleStatusGui.Pending"
+              @update:isChecked="handleVPNToggle"
+              :class="{
+                'power-toggle-disabled': state.VPNConnected === projectorConstants.ToggleStatusGui.Pending,
+                'power-toggle-off': state.VPNConnected === projectorConstants.ToggleStatusGui.On,
+                'power-toggle-on': state.VPNConnected === projectorConstants.ToggleStatusGui.Off
+              }"
+          />
+        </div>
+        <div class="toggle-container">
+          <label class="toggle-label">
             Projector Power
           </label>
           <ToggleSwitch
-              :isChecked="state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.On"
-              :disabled="state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.Pending"
+              :isChecked="state.ProjectorPoweredOn === projectorConstants.ToggleStatusGui.On"
+              :disabled="state.ProjectorPoweredOn === projectorConstants.ToggleStatusGui.Pending"
               @update:isChecked="handlePowerToggle"
               :class="{
-                'power-toggle-disabled': state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.Pending,
-                'power-toggle-off': state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.On,
-                'power-toggle-on': state.ProjectorPoweredOn === projectorConstants.PowerStatusGui.Off
+                'power-toggle-disabled': state.ProjectorPoweredOn === projectorConstants.ToggleStatusGui.Pending,
+                'power-toggle-off': state.ProjectorPoweredOn === projectorConstants.ToggleStatusGui.On,
+                'power-toggle-on': state.ProjectorPoweredOn === projectorConstants.ToggleStatusGui.Off
               }"
           />
         </div>
@@ -125,10 +140,12 @@ const {
   handleClickAndroidOpenAppCommand,
   handleClickTVCommand,
   handlePowerToggle,
+  handleVPNToggle,
   handleProjectorConnectionStateChange,
   handleAndroidTVConnectionStateChange,
   handleHdmiInputQuery,
   handleProjectorQueryResponse,
+  handleAndroidTVQueryResponse,
   handleGUIConnectionStateChange
 } = useProjector();
 
@@ -143,7 +160,7 @@ const inputOptions = [
 const inputOptionsComputed = computed(() => {
   return inputOptions.map((option) => ({
     ...option,
-    disabled: state.ProjectorPoweredOn !== projectorConstants.PowerStatusGui.On
+    disabled: state.ProjectorPoweredOn !== projectorConstants.ToggleStatusGui.On
   }));
 });
 
@@ -176,6 +193,7 @@ onMounted(async () => {
       (isConnected) => { handleProjectorConnectionStateChange(isConnected); },
       (isConnected) => { handleAndroidTVConnectionStateChange(isConnected); },
       (response) => { handleHdmiInputQuery(response); },
+      (response) => { handleAndroidTVQueryResponse(response.queryType, response.currentStatus); },
       (response) => { handleProjectorQueryResponse(response.queryType, response.currentStatus); },
       (connectionStatus) => { handleGUIConnectionStateChange(connectionStatus); }
   );
@@ -200,10 +218,12 @@ const onTabFocused = () => {
   if (!SignalRInstance.isConnected()) {
     console.log("Tab regained focus. Reconnecting SignalR...");
     SignalRInstance.initialize(
-        (isConnected) => handleProjectorConnectionStateChange(isConnected),
-        (isConnected) => handleAndroidTVConnectionStateChange(isConnected),
-        (response) => handleProjectorQueryResponse(response.queryType, response.currentStatus),
-        (connectionStatus) => handleGUIConnectionStateChange(connectionStatus)
+        (isConnected) => { handleProjectorConnectionStateChange(isConnected); },
+        (isConnected) => { handleAndroidTVConnectionStateChange(isConnected); },
+        (response) => { handleHdmiInputQuery(response); },
+        (response) => { handleAndroidTVQueryResponse(response.queryType, response.currentStatus); },
+        (response) => { handleProjectorQueryResponse(response.queryType, response.currentStatus); },
+        (connectionStatus) => { handleGUIConnectionStateChange(connectionStatus); }
     );
   } else {
     console.log("Tab regained focus. Querying initial backend statuses...");

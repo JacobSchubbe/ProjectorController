@@ -77,7 +77,7 @@ export enum PowerStatusProjector
     Unknown = 6
 }
 
-export enum PowerStatusGui
+export enum ToggleStatusGui
 {
     Off = 0,
     On = 1,

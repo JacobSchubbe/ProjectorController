@@ -17,12 +17,24 @@ public class HdmiSwitchController
     private const StopBits stopBits = StopBits.One; // Stop bits setting (1 stop bit)
     private const Handshake handshake = Handshake.None; // Flow control (None)
     private byte[] endOfLineBytes = { 0x0A, 0x0D }; // End of line bytes [0x0A, 0x0D];
-    public HdmiSwitchController(ILogger<HdmiSwitchController> logger, SerialCommunication serialCommunication, IHubContext<GUIHub> hub)
+    public HdmiSwitchController(ILogger<HdmiSwitchController> logger, SerialCommunication serialCommunication, IHubContext<GUIHub> hub, IConfiguration configuration)
     {
         this.logger = logger;
         this.serialCommunication = serialCommunication;
         this.hub = hub;
-        serialCommunication.StartCommunication(new[] {portName0, portName1}, baudRate, dataBits, parity, stopBits, handshake, endOfLineBytes);
+        var environment = configuration.GetValue<string>("CustomConfig:Environment");
+        
+        if (!string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                serialCommunication.StartCommunication(new[] {portName0, portName1}, baudRate, dataBits, parity, stopBits, handshake, endOfLineBytes);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
     }
 
     public async Task SetInputHdmi(Inputs input)

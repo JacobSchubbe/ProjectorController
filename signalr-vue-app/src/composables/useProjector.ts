@@ -12,13 +12,14 @@ export function useProjector() {
     GUIConnected: false,
     ProjectorConnected: false,
     AndroidTVConnected: false,
-    ProjectorPoweredOn: projectorConstants.PowerStatusGui.Pending,
+    VPNConnected: projectorConstants.ToggleStatusGui.Pending,
+    ProjectorPoweredOn: projectorConstants.ToggleStatusGui.Pending,
   });
 
   const buttonDisabledWhenPoweredOff = computed(() => {
     return !state.GUIConnected ||
         !state.ProjectorConnected ||
-        state.ProjectorPoweredOn !== projectorConstants.PowerStatusGui.On;
+        state.ProjectorPoweredOn !== projectorConstants.ToggleStatusGui.On;
   })
   
   const buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV = computed(() => {
@@ -26,6 +27,14 @@ export function useProjector() {
       !state.AndroidTVConnected ||
       state.selectedInput !== hdmiSwitchConstants.Inputs.SmartTV;
   });
+
+  const handleVPNToggle = (isVPNOn: boolean) => {
+    if (isVPNOn) {
+      handleClickAndroidCommand(adbConstants.KeyCodes.VpnOn, false);
+    } else {
+      handleClickAndroidCommand(adbConstants.KeyCodes.VpnOff, false);
+    }
+  };
   
   const handlePowerToggle = (isPoweredOn: boolean) => {
     if (isPoweredOn) {
@@ -43,17 +52,14 @@ export function useProjector() {
     else
     {
       state.selectedInput = -1;
-      state.ProjectorPoweredOn = projectorConstants.PowerStatusGui.Pending;
+      state.ProjectorPoweredOn = projectorConstants.ToggleStatusGui.Pending;
     }
   }
 
   const handleAndroidTVConnectionStateChange = async (isConnected: boolean) => {
-    if (state.AndroidTVConnected != isConnected)
-    {
-      state.AndroidTVConnected = isConnected;
-      if (state.AndroidTVConnected) {
-        SignalRInstance.getIsConnectedToAndroidTV();
-      }
+    state.AndroidTVConnected = isConnected;
+    if (state.AndroidTVConnected) {
+      SignalRInstance.queryForInitialAndroidTVStatuses();
     }
   }
   
@@ -62,6 +68,16 @@ export function useProjector() {
     state.selectedInput = currentStatus as number;
   }
 
+  
+  const handleAndroidTVQueryResponse = (queryType:Number, currentStatus:Number) => {
+    switch (queryType) {
+      case adbConstants.KeyCodes.VpnStatusQuery:
+        console.log(`Vpn query response: ${adbConstants.KeyCodes[currentStatus as number]}`);
+        state.VPNConnected = getVpnStatusAsToggleStatusGui(currentStatus as adbConstants.KeyCodes);
+        break;
+    }
+  }
+  
   const handleProjectorQueryResponse = (queryType:Number, currentStatus:Number) => {
     switch (queryType) {
       case projectorConstants.ProjectorCommands.SystemControlVolumeQuery:
@@ -80,7 +96,7 @@ export function useProjector() {
         break;
       case projectorConstants.ProjectorCommands.SystemControlPowerQuery:
         console.log(`Projector Power query response: ${currentStatus}`);
-        state.ProjectorPoweredOn = getPowerStatusGui(currentStatus as projectorConstants.PowerStatusProjector);
+        state.ProjectorPoweredOn = getProjectPowerAsToggleStatusGui(currentStatus as projectorConstants.PowerStatusProjector);
         if (state.ProjectorPoweredOn){
           SignalRInstance.queryForInitialProjectorStatuses();
         }
@@ -91,15 +107,26 @@ export function useProjector() {
     }
   }
 
-  const getPowerStatusGui = (status:projectorConstants.PowerStatusProjector) => {
+  const getProjectPowerAsToggleStatusGui = (status:projectorConstants.PowerStatusProjector) => {
     switch (status) {
       case projectorConstants.PowerStatusProjector.StandbyNetworkOn:
-        return projectorConstants.PowerStatusGui.Off;
+        return projectorConstants.ToggleStatusGui.Off;
       case projectorConstants.PowerStatusProjector.LampOn:
       case projectorConstants.PowerStatusProjector.Warmup:
-        return projectorConstants.PowerStatusGui.On;
+        return projectorConstants.ToggleStatusGui.On;
       default:
-        return projectorConstants.PowerStatusGui.Pending;
+        return projectorConstants.ToggleStatusGui.Pending;
+    }
+  }
+
+  const getVpnStatusAsToggleStatusGui = (status:adbConstants.KeyCodes) => {
+    switch (status) {
+      case adbConstants.KeyCodes.VpnOff:
+        return projectorConstants.ToggleStatusGui.Off;
+      case adbConstants.KeyCodes.VpnOn:
+        return projectorConstants.ToggleStatusGui.On;
+      default:
+        return projectorConstants.ToggleStatusGui.Pending;
     }
   }
 
@@ -107,7 +134,8 @@ export function useProjector() {
     state.GUIConnected = isConnected;
     if (!state.GUIConnected) {
       state.selectedInput = -1;
-      state.ProjectorPoweredOn = projectorConstants.PowerStatusGui.Pending;
+      state.ProjectorPoweredOn = projectorConstants.ToggleStatusGui.Pending;
+      state.VPNConnected = projectorConstants.ToggleStatusGui.Pending;
       state.ProjectorConnected = false;
     }
   }
@@ -133,7 +161,7 @@ export function useProjector() {
 
     switch (command) {
       case projectorConstants.ProjectorCommands.SystemControlPowerOff:
-        while (state.ProjectorPoweredOn != projectorConstants.PowerStatusGui.Off) {
+        while (state.ProjectorPoweredOn != projectorConstants.ToggleStatusGui.Off) {
           console.log("Waiting for power off...");
           SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
           await new Promise(resolve => setTimeout(resolve, 4000));
@@ -141,7 +169,7 @@ export function useProjector() {
         console.log("Power off complete");
         break;
       case projectorConstants.ProjectorCommands.SystemControlPowerOn:
-        while (state.ProjectorPoweredOn != projectorConstants.PowerStatusGui.On) {
+        while (state.ProjectorPoweredOn != projectorConstants.ToggleStatusGui.On) {
           console.log("Waiting for power on...");
           SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
           await new Promise(resolve => setTimeout(resolve, 4000));
@@ -170,7 +198,9 @@ export function useProjector() {
     handleAndroidTVConnectionStateChange,
     handleHdmiInputQuery,
     handleProjectorQueryResponse,
+    handleAndroidTVQueryResponse,
     handleGUIConnectionStateChange,
-    handlePowerToggle
+    handlePowerToggle,
+    handleVPNToggle
   };
 }

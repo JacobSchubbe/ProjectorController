@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace ProjectController.Controllers.ADB;
 
 public class AdbController
@@ -11,6 +13,7 @@ public class AdbController
         this.logger = logger;
         AdbClient = adbClient;
         _ = AdbClient.DetectConnectionChange(Ip, CancellationToken.None);
+        _ = AdbClient.DetectVpnConnectionChange(CancellationToken.None);
     }
 
     private void Log(string message)
@@ -30,50 +33,28 @@ public class AdbController
         return status;
     }
 
-    public bool StartVpn()
-    {
-        var adbCommand = "monkey -p com.surfshark.vpnclient.android -c android.intent.category.LAUNCHER 1";
-        var output = AdbClient.ExecuteShellCommand(adbCommand);
-        Log(output);
-        return true;
-    }
-    
-    public void StopVpn()
-    {
-        ForceStopApp(AndroidTVApps.Surfshark);
-    }
-
-    public void StopAllApps()
+    private async Task StopAllApps(bool shouldForceStopVpn)
     {
         foreach (var app in Enum.GetValues<AndroidTVApps>())
         {
-            ForceStopApp(app);
-        }
-    }
-    
-    public bool IsVpnConnected()
-    {
-        var adbCommand = "dumpsys connectivity | grep -i vpn";
-        try
-        {
-            // Execute the ADB command
-            var output = AdbClient.ExecuteShellCommand(adbCommand);
-            if (output.Contains("VPN CONNECTED") && output.Contains("IS_VPN"))
+            Log($"Try to stop app: {app}");
+            if (app is AndroidTVApps.Surfshark)
             {
-                Log("A VPN connection is active, managed by Surfshark.");
+                Log($"Checking {app.ToString()}...");
+                if (shouldForceStopVpn)
+                    ForceStopApp(app);
             }
             else
             {
-                Log("No active VPN connection found.");
+                ForceStopApp(app);
             }
+            await Task.Delay(100);
         }
-        catch (Exception ex)
-        {
-            // Handle any errors
-            Log("An error occurred: " + ex.Message);
-        }
+    }
 
-        return false;
+    public bool IsVpnConnected()
+    {
+        return AdbClient.IsVpnConnected();
     }
 
     public ADBClient GetAdbClient()
@@ -81,10 +62,8 @@ public class AdbController
         return AdbClient;
     }
     
-    // Define the dictionary mapping KeyCodes to corresponding methods.
-    public Dictionary<KeyCodes, Func<Task>> KeyCommands => new()
+    public Dictionary<KeyCodes, Func<Task<string>>> KeyCommands => new()
     {
-        // Navigation Commands
         { KeyCodes.KEYCODE_HOME, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_HOME) },
         { KeyCodes.KEYCODE_TV, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV) },
         { KeyCodes.KEYCODE_BACK, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_BACK) },
@@ -94,93 +73,152 @@ public class AdbController
         { KeyCodes.KEYCODE_DPAD_RIGHT, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_RIGHT) },
         { KeyCodes.KEYCODE_ENTER, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_ENTER) },
 
-        // Volume Commands
-        { KeyCodes.KEYCODE_VOLUME_UP, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_UP) },
-        { KeyCodes.KEYCODE_VOLUME_DOWN, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_DOWN) },
-        { KeyCodes.KEYCODE_VOLUME_MUTE, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_VOLUME_MUTE) },
-
-        // Power Commands
-        { KeyCodes.KEYCODE_POWER, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_POWER) },
-        { KeyCodes.KEYCODE_SLEEP, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_SLEEP) },
-        { KeyCodes.KEYCODE_SOFT_SLEEP, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_SOFT_SLEEP) },
-        { KeyCodes.KEYCODE_WAKEUP, async () => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_WAKEUP) },
-
-        // Channel Commands
-        { KeyCodes.KEYCODE_CHANNEL_UP, async () => 
-        {
-            await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
-            await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_CHANNEL_UP);
-        }},
-        { KeyCodes.KEYCODE_CHANNEL_DOWN, async () =>
-        {
-            await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
-            await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_CHANNEL_DOWN);
-        }}
+        { KeyCodes.VpnOff, async () => await SetVpnStatusAndReopenApp(false)},
+        { KeyCodes.VpnOn, async () => await SetVpnStatusAndReopenApp(true)},
+        { KeyCodes.VpnStatusQuery, () => Task.FromResult(AdbClient.IsVpnConnected().ToString()) },
     };
-    
-    // Method for channel numbers since it has special logic.
-    public void PressChannelNumber(string channelNumber)
+
+    private AndroidTVApps? GetCurrentForegroundApp()
     {
-        var numbersKeyCodes = new Dictionary<char, KeyCodes>
+        Log("Getting the current foreground app...");
+        try
         {
-            { '0', KeyCodes.KEYCODE_0 },
-            { '1', KeyCodes.KEYCODE_1 },
-            { '2', KeyCodes.KEYCODE_2 },
-            { '3', KeyCodes.KEYCODE_3 },
-            { '4', KeyCodes.KEYCODE_4 },
-            { '5', KeyCodes.KEYCODE_5 },
-            { '6', KeyCodes.KEYCODE_6 },
-            { '7', KeyCodes.KEYCODE_7 },
-            { '8', KeyCodes.KEYCODE_8 },
-            { '9', KeyCodes.KEYCODE_9 }
-        };
+            // Updated ADB command to get the top activity (foreground app)
+            var adbCommand = "dumpsys activity activities | grep -E 'ResumedActivity'";
+            var output = AdbClient.ExecuteShellCommand(adbCommand);
+            
+            // Improved regex to extract the package name and activity
+            var match = Regex.Match(output, @"u0\s+([a-zA-Z0-9\.]+)/[a-zA-Z0-9\.]+");
 
-        AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV);
-
-        foreach (var digit in channelNumber)
-        {
-            if (numbersKeyCodes.TryGetValue(digit, out var digitKeyCode))
+            if (match.Success)
             {
-                AdbClient.SendKeyEventInput(digitKeyCode);
+                var packageName = match.Groups[1].Value;
+                Log($"Current foreground app package: {packageName}");
+
+                foreach (AndroidTVApps app in Enum.GetValues(typeof(AndroidTVApps)))
+                {
+                    if (app.GetPackageActivity().Contains(packageName, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        return app;
+                    }
+                }
+            }
+            else
+            {
+                Log("No matching foreground app found OR regex parsing failed.");
             }
         }
-    }
-    
-    
-    // App Commands
-    public void OpenApp(AndroidTVApps app)
-    {
-        if (AppCommands.TryGetValue(app, out var action))
+        catch (Exception ex)
         {
-            action.Invoke();
+            Log($"An error occurred while getting the foreground app: {ex.Message}");
         }
-        else
-        {
-            Console.WriteLine($"App {app} is not mapped to any command.");
-        }
-    }
-    private Dictionary<AndroidTVApps, Action> AppCommands => new()
-    {
-        { AndroidTVApps.YouTube, () => ExecuteOpenApp(AndroidTVApps.YouTube) },
-        { AndroidTVApps.Netflix, () => ExecuteOpenApp(AndroidTVApps.Netflix) },
-        { AndroidTVApps.AmazonPrime, () => ExecuteOpenApp(AndroidTVApps.AmazonPrime) },
-        { AndroidTVApps.DisneyPlus, () => ExecuteOpenApp(AndroidTVApps.DisneyPlus) },
-        { AndroidTVApps.Crunchyroll, () => ExecuteOpenApp(AndroidTVApps.Crunchyroll) },
-        { AndroidTVApps.Spotify, () => ExecuteOpenApp(AndroidTVApps.Spotify) },
-        { AndroidTVApps.Surfshark, () => ExecuteOpenApp(AndroidTVApps.Surfshark) },
-    };
 
-    private void ExecuteOpenApp(AndroidTVApps app)
+        return null; // Return null if no foreground app is detected
+    }
+    private async Task<string> SetVpnStatusAndReopenApp(bool isVpnOn)
+    {
+        try
+        {
+            var currentVpnStatus = IsVpnConnected();
+            if (currentVpnStatus == isVpnOn)
+            {
+                Log($"Vpn already has a status of {isVpnOn}. Will not change status nor force close apps.");
+                return AdbConstants.AdbSuccess;
+            }
+            
+            // Step 1: Detect the currently open app
+            Log("Detecting the currently open app...");
+            var currentApp = GetCurrentForegroundApp();
+            currentApp = currentApp == AndroidTVApps.Surfshark ? null : currentApp;
+            Log(currentApp == null
+                ? "No foreground app detected. Defaulting to home screen."
+                : $"Detected currently open app: {currentApp}");
+            
+            // Step 2: Open the Surfshark VPN app
+            if (isVpnOn)
+            {
+                Log("Opening Surfshark VPN...");
+                await OpenApp(AndroidTVApps.Surfshark);
+                
+                // Step 3: Wait for VPN connection
+                Log("Waiting for VPN connection...");
+                bool vpnConnected = false;
+                const int maxRetries = 10; // Wait up to 10 seconds
+                for (int i = 0; i < maxRetries; i++)
+                {
+                    if (IsVpnConnected())
+                    {
+                        vpnConnected = true;
+                        break;
+                    }
+
+                    // Wait 1 second before checking again
+                    await Task.Delay(1000);
+                }
+
+                if (!vpnConnected)
+                {
+                    Log("Failed to establish VPN connection.");
+                    return AdbConstants.AdbFailure;
+                }
+
+                Log("VPN connection established successfully.");
+            }
+
+            // Step 4: Force stop all apps
+            Log("Stopping all apps...");
+            await StopAllApps(!isVpnOn);
+
+            // Step 5: Reopen the original app
+            if (currentApp != null)
+            {
+                Log($"Reopening the previously open app: {currentApp}");
+                await OpenApp(currentApp.Value); // Use .Value since currentApp is nullable
+            }
+            else
+            {
+                Log("No previous app detected to reopen. Going to home screen.");
+                await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_HOME);
+            }
+
+            Log($"Switch {(isVpnOn ? "to" : "from")} VPN and reopen app process completed.");
+            return AdbConstants.AdbSuccess;
+        }
+        catch (Exception ex)
+        {
+            Log($"An error occurred during the process: {ex.Message}");
+            return AdbConstants.AdbFailure;
+        }
+    }    
+    
+    public async Task OpenApp(AndroidTVApps app)
+    {
+        await (app switch
+        {
+            AndroidTVApps.YouTube => ExecuteOpenApp(AndroidTVApps.YouTube),
+            AndroidTVApps.Netflix => ExecuteOpenApp(AndroidTVApps.Netflix),
+            AndroidTVApps.AmazonPrime => ExecuteOpenApp(AndroidTVApps.AmazonPrime),
+            AndroidTVApps.DisneyPlus => ExecuteOpenApp(AndroidTVApps.DisneyPlus),
+            AndroidTVApps.Crunchyroll => ExecuteOpenApp(AndroidTVApps.Crunchyroll),
+            AndroidTVApps.Spotify => ExecuteOpenApp(AndroidTVApps.Spotify),
+            AndroidTVApps.Surfshark => ExecuteOpenApp(AndroidTVApps.Surfshark),
+            _ => throw new ArgumentOutOfRangeException(nameof(app), app, $"App {app} is not mapped to any command.")
+        });
+    }
+    
+    private Task ExecuteOpenApp(AndroidTVApps app)
     {
         var packageActivity = app.GetPackageActivity();
         var parts = packageActivity.Split('/');
         var package = parts[0];
         var activity = parts[1];
         AdbClient.StartApp(package, activity);
+        return Task.CompletedTask;
     }
 
-    public void ForceStopApp(AndroidTVApps app)
+    private void ForceStopApp(AndroidTVApps app)
     {
+        Log($"Force stopping app: {app}");
         var packageActivity = app.GetPackageActivity();
         var parts = packageActivity.Split('/');
         var package = parts[0];

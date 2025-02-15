@@ -6,7 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-        <RuntimeIdentifier>linux-arm64</RuntimeIdentifier>
+<!--        <RuntimeIdentifier>linux-arm64</RuntimeIdentifier>-->
     </PropertyGroup>
 
     <ItemGroup>
