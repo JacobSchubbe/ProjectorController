@@ -5,6 +5,7 @@
       @pointerdown="startPress"
       @pointerup="endPress.bind(this, false)"
       @pointerleave="endPress.bind(this, true)"
+      @contextmenu.prevent
   >
     <slot></slot>
   </button>
@@ -111,5 +112,10 @@ export default defineComponent({
 button {
   margin: 10px;
   padding: 10px;
+
+  /* Prevent text selection */
+  user-select: none;
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10+ */
 }
 </style>

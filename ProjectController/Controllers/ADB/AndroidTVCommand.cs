@@ -9,7 +9,7 @@ public class AndroidTVCommand : ICommand<KeyCodes>
     public Func<string, Task> Callback { get; }
     public bool IsLongPress { get; }
     
-    public AndroidTVCommand(KeyCodes commandType, Func<ICommand<KeyCodes>, Task<string>> sendCommand, Func<ICommand<KeyCodes>, string, Task> callback, bool isLongPress = false)
+    public AndroidTVCommand(KeyCodes commandType, Func<ICommand<KeyCodes>, Task<string>> sendCommand, Func<ICommand<KeyCodes>, string, Task> callback, bool isLongPress)
     {
         CommandType = commandType;
         SendCommand = () => sendCommand.Invoke(this);

@@ -17,8 +17,8 @@ public class AndroidTVController
         this.adbController = adbController;
         this.commandRunner = commandRunner;
         adbController.AdbClient.RegisterOnDisconnect(OnDisconnected);
-        adbController.AdbClient.RegisterOnVpnConnect(() => SendQueryResponseToClients(new AndroidTVCommand(KeyCodes.VpnStatusQuery, _ => Task.FromResult(string.Empty), SendQueryResponseToClients), true.ToString()));
-        adbController.AdbClient.RegisterOnVpnDisconnect(() => SendQueryResponseToClients(new AndroidTVCommand(KeyCodes.VpnStatusQuery, _ => Task.FromResult(string.Empty), SendQueryResponseToClients), false.ToString()));
+        adbController.AdbClient.RegisterOnVpnConnect(() => SendQueryResponseToClients(new AndroidTVCommand(KeyCodes.VpnStatusQuery, _ => Task.FromResult(string.Empty), SendQueryResponseToClients, false), true.ToString()));
+        adbController.AdbClient.RegisterOnVpnDisconnect(() => SendQueryResponseToClients(new AndroidTVCommand(KeyCodes.VpnStatusQuery, _ => Task.FromResult(string.Empty), SendQueryResponseToClients, false), false.ToString()));
         _ = Start();
     }
 
@@ -71,22 +71,22 @@ public class AndroidTVController
 
     public async Task EnqueueCommand(KeyCodes commandType)
     {
-        await EnqueueCommand(new(commandType, command => SendCommand((AndroidTVCommand)command), SendCommandResponseToClients), false);
+        await EnqueueCommand(new AndroidTVCommand(commandType, command => SendCommand((AndroidTVCommand)command), SendCommandResponseToClients, false));
     }
     
     public async Task EnqueueLongPressCommand(KeyCodes commandType)
     {
-        await EnqueueCommand(new(commandType, command => SendCommand((AndroidTVCommand)command), SendCommandResponseToClients), true);
+        await EnqueueCommand(new AndroidTVCommand(commandType, command => SendCommand((AndroidTVCommand)command), SendCommandResponseToClients, true));
     }
 
-    private async Task EnqueueCommand(AndroidTVCommand command, bool isLongPress)
+    private async Task EnqueueCommand(AndroidTVCommand command)
     {
         await commandRunner.EnqueueCommand(new[] { command }, allowDuplicates:true);
     }
     
     public async Task EnqueueQuery(KeyCodes commandType)
     {
-        await EnqueueCommand(new(commandType, command => SendCommand((AndroidTVCommand)command), SendQueryResponseToClients), false);
+        await EnqueueCommand(new AndroidTVCommand(commandType, command => SendCommand((AndroidTVCommand)command), SendQueryResponseToClients, false));
     }
     
     public async Task EnqueueOpenAppCommand(KeyCodes command)
@@ -155,6 +155,7 @@ public class AndroidTVController
     {
         try
         {
+            logger.LogInformation($"Sending command: {command.CommandType}, with long-press: {command.IsLongPress}.");
             return await adbController.KeyCommands[command.CommandType](command.IsLongPress);
         }
         catch (Exception ex)
