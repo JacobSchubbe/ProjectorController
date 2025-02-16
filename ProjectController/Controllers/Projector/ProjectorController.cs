@@ -10,14 +10,14 @@ public class ProjectorController
     private readonly ILogger<ProjectorController> logger;
     private readonly IHubContext<GUIHub> hub;
     private readonly TcpCommunication tcpConnection;
-    private readonly CommandRunner<ProjectorCommands> commandRunner;
+    private readonly CommandRunner<ProjectorCommand, ProjectorCommandsEnum> commandRunner;
     private bool startCommunicationSent = false;
     private bool isInitialVolumeQueryOnConnected = false;
     
     public ProjectorController(ILogger<ProjectorController> logger, 
         IHubContext<GUIHub> hub, 
         TcpCommunication tcpConnection,
-        CommandRunner<ProjectorCommands> commandRunner)
+        CommandRunner<ProjectorCommand, ProjectorCommandsEnum> commandRunner)
     {
         this.logger = logger;
         this.hub = hub;
@@ -35,7 +35,7 @@ public class ProjectorController
     private async Task Start()
     {
         await tcpConnection.Initialize(ProjectorHost, ProjectorPort);
-        await commandRunner.Start(SendCommand);
+        await commandRunner.Start();
         _ = UpdateVolumeRunner(CancellationToken.None);
     }
 
@@ -44,18 +44,19 @@ public class ProjectorController
         logger.LogInformation("Connected to projector.");
         await SendIsConnectedToProjector();
         await SendInitialSystemControlStartCommunication();
-        await EnqueueQuery(ProjectorCommands.SystemControlPowerQuery);
+        await EnqueueQuery(ProjectorCommandsEnum.SystemControlPowerQuery);
         isInitialVolumeQueryOnConnected = true;
-        await EnqueueQuery(ProjectorCommands.SystemControlVolumeQuery);
+        await EnqueueQuery(ProjectorCommandsEnum.SystemControlVolumeQuery);
     }
 
     private async Task SendInitialSystemControlStartCommunication()
     {
         logger.LogInformation("Sending System Control Start Communication.");
-        var commandType = ProjectorCommands.SystemControlStartCommunication;
-        var response = await SendCommand(commandType);
+        var commandType = ProjectorCommandsEnum.SystemControlStartCommunication;
+        var command = new ProjectorCommand(commandType, SendCommand, SendCommandResponseToClients);
+        var response = await SendCommand(command);
         logger.LogInformation("Sent System Control Start Communication.");
-        await SendCommandResponseToClients(commandType, response);
+        await SendCommandResponseToClients(command, response);
     }
     
     private async Task OnDisconnected()
@@ -73,28 +74,24 @@ public class ProjectorController
 
     private bool IsConnected => tcpConnection.IsConnected;
 
-    public async Task EnqueueCommand(ProjectorCommands command, bool allowDuplicates = false)
+    public async Task EnqueueCommand(ProjectorCommandsEnum commandType, bool allowDuplicates = false)
     {
-        await commandRunner.EnqueueCommand(new[] { command }, async (commandType, response) =>
-        {
-            await UpdateAllClients(commandType);
-            await SendCommandResponseToClients(commandType, response);
-        }, allowDuplicates);
+        await commandRunner.EnqueueCommand(new ProjectorCommand[] { new(commandType, SendCommand, SendCommandResponseToClients)}, allowDuplicates);
     }
     
-    public async Task EnqueueQuery(ProjectorCommands command, bool allowDuplicates = false)
+    public async Task EnqueueQuery(ProjectorCommandsEnum commandType, bool allowDuplicates = false)
     {
-        await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients, allowDuplicates);
+        await commandRunner.EnqueueCommand(new ProjectorCommand[] { new(commandType, SendCommand, SendQueryResponseToClients)}, allowDuplicates);
     }
     
-    private async Task<string> SendCommand(ProjectorCommands command)
+    private async Task<string> SendCommand(ICommand<ProjectorCommandsEnum> command)
     {
-        var commandStr = $"{ProjectorCommandsDictionary[command]}\r";
-        if (command is ProjectorCommands.SystemControlStartCommunication)
+        var commandStr = $"{ProjectorCommandsDictionary[command.CommandType]}\r";
+        if (command.CommandType is ProjectorCommandsEnum.SystemControlStartCommunication)
         {
             if (!startCommunicationSent)
             {
-                commandStr = $"{ProjectorCommandsDictionary[command]}";
+                commandStr = $"{ProjectorCommandsDictionary[command.CommandType]}";
                 return await tcpConnection.SendCommand(commandStr, CancellationToken.None, waitForSemaphore:false);
             }
 
@@ -104,9 +101,11 @@ public class ProjectorController
         return await tcpConnection.SendCommand(commandStr, CancellationToken.None);
     }
     
-    private async Task SendCommandResponseToClients(ProjectorCommands commandType, string response)
+    private async Task SendCommandResponseToClients(ICommand<ProjectorCommandsEnum> command, string response)
     {
-        if (commandType == ProjectorCommands.SystemControlStartCommunication)
+        await UpdateAllClients(command.CommandType);
+
+        if (command.CommandType == ProjectorCommandsEnum.SystemControlStartCommunication)
         {
             if (string.IsNullOrEmpty(response))
             {
@@ -133,12 +132,13 @@ public class ProjectorController
         logger.LogInformation($"Sending command response: {response}");
         await hub.Clients.All.SendAsync("ReceiveMessage", new
         {
-            message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
+            message = $"System Control Command: {command.CommandType} was successfully executed. Response: {response}"
         });
     }
 
-    private async Task SendQueryResponseToClients(ProjectorCommands queryType, string rawResponse)
+    private async Task SendQueryResponseToClients(ICommand<ProjectorCommandsEnum> command, string rawResponse)
     {
+        var queryType = command.CommandType;
         if (string.IsNullOrEmpty(rawResponse))
         {
             logger.LogWarning("Query response for {$queryType} was empty.", queryType.ToString());
@@ -148,28 +148,28 @@ public class ProjectorController
         logger.LogTrace("Sending query response. QueryType: {$queryType} Raw response: {rawResponse}", queryType, rawResponse);
         switch (queryType)
         {
-            case ProjectorCommands.SystemControlVolumeQuery:
+            case ProjectorCommandsEnum.SystemControlVolumeQuery:
                 if (int.TryParse(rawResponse.Split('=')[1].TrimEnd(':', '\r'), out var rawVolume))
                 {
                     await SetCurrentVolume(rawVolume);
                     await SendQueryResponse(queryType, targetVolume);
                 }
                 break;
-            case ProjectorCommands.SystemControlPowerQuery:
+            case ProjectorCommandsEnum.SystemControlPowerQuery:
                 var status = StringToPowerStatus(rawResponse);
                 logger.LogInformation($"Sending current status {status.ToString()} for query {queryType.ToString()}");
                 await SendQueryResponse(queryType, status);
                 break;
             default:
                 rawResponse = rawResponse.Replace("=", " ").TrimEnd(':', '\r');
-                ProjectorCommands? currentStatus = null;
+                ProjectorCommandsEnum? currentStatus = null;
                 foreach (var kvp in ProjectorCommandsDictionary.Where(kvp => kvp.Value == rawResponse))
                 {
                     currentStatus = kvp.Key;
                     break;
                 }
 
-                if (!currentStatus.HasValue && queryType != ProjectorCommands.SystemControlPowerQuery)
+                if (!currentStatus.HasValue && queryType != ProjectorCommandsEnum.SystemControlPowerQuery)
                 {
                     logger.LogInformation($"No status matching current status: {rawResponse}");
                     return;
@@ -182,26 +182,26 @@ public class ProjectorController
         }
     }
 
-    private async Task UpdateAllClients(ProjectorCommands commandType)
+    private async Task UpdateAllClients(ProjectorCommandsEnum commandType)
     {
         switch (commandType)
         {
-            case ProjectorCommands.SystemControlSourceHDMI1:
-            case ProjectorCommands.SystemControlSourceHDMI2:
-            case ProjectorCommands.SystemControlSourceHDMI3:
-            case ProjectorCommands.SystemControlSourceHDMILAN:
+            case ProjectorCommandsEnum.SystemControlSourceHDMI1:
+            case ProjectorCommandsEnum.SystemControlSourceHDMI2:
+            case ProjectorCommandsEnum.SystemControlSourceHDMI3:
+            case ProjectorCommandsEnum.SystemControlSourceHDMILAN:
                 logger.LogDebug($"Sending updated source to all clients: {commandType.ToString()}.");
-                await SendQueryResponse(ProjectorCommands.SystemControlSourceQuery, commandType);
+                await SendQueryResponse(ProjectorCommandsEnum.SystemControlSourceQuery, commandType);
                 break;
-            case ProjectorCommands.SystemControlVolumeUp:
-            case ProjectorCommands.SystemControlVolumeDown:
+            case ProjectorCommandsEnum.SystemControlVolumeUp:
+            case ProjectorCommandsEnum.SystemControlVolumeDown:
                 logger.LogDebug($"Sending updated target volume to all clients: {commandType.ToString()}.");
-                await SendQueryResponse(ProjectorCommands.SystemControlVolumeQuery, targetVolume);
+                await SendQueryResponse(ProjectorCommandsEnum.SystemControlVolumeQuery, targetVolume);
                 break;
         }
     }
 
-    private async Task SendQueryResponse<T>(ProjectorCommands queryType, T status)
+    private async Task SendQueryResponse<T>(ProjectorCommandsEnum queryType, T status)
     {
         logger.LogInformation($"Sending query response: {status?.ToString()} for query {queryType.ToString()}");
         await hub.Clients.All.SendAsync("ReceiveProjectorQueryResponse", new
@@ -260,10 +260,10 @@ public class ProjectorController
                     continue;
                 }
                 
-                var command = volumeDiff > 0 ? ProjectorCommands.SystemControlVolumeUp : ProjectorCommands.SystemControlVolumeDown;
+                var command = volumeDiff > 0 ? ProjectorCommandsEnum.SystemControlVolumeUp : ProjectorCommandsEnum.SystemControlVolumeDown;
                 waitingForVolumeUpdate = new();
                 await EnqueueCommand(command, true);
-                await EnqueueQuery(ProjectorCommands.SystemControlVolumeQuery);
+                await EnqueueQuery(ProjectorCommandsEnum.SystemControlVolumeQuery);
             }
             finally
             {

@@ -508,13 +508,11 @@ public class ADBClient
             throw new InvalidOperationException("No device is selected.");
         }
 
+        logger.LogDebug($"Sending key event with longpress: {longPress}");
+        
         // Construct the input keyevent command
-        var command = $"input keyevent {((int)keycode).ToString()}";
-        if (longPress)
-        {
-            command += " --longpress";
-        }
-
+        var command = $"input keyevent{(longPress ? " --longpress" : string.Empty)} {((int)keycode).ToString()}";
+        
         logger.LogDebug($"Sending key event: {command}");
         return Task.FromResult(ExecuteShellCommand(command));
     }

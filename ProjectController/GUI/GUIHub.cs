@@ -52,11 +52,11 @@ public class GUIHub : Hub
         logger.LogTrace("Received hdmi input: {$input}", input);
         if (input == Inputs.SmartTV)
         {
-            await ReceiveProjectorCommand(ProjectorCommands.SystemControlSourceHDMI3);
+            await ReceiveProjectorCommand(ProjectorCommandsEnum.SystemControlSourceHDMI3);
         }
         else
         {
-            await ReceiveProjectorCommand(ProjectorCommands.SystemControlSourceHDMI1);
+            await ReceiveProjectorCommand(ProjectorCommandsEnum.SystemControlSourceHDMI1);
         }
         await hdmiSwitchController.SetInputHdmi(input);
     }
@@ -67,13 +67,13 @@ public class GUIHub : Hub
         await hdmiSwitchController.ReadCurrentConfiguration();
     }
     
-    public async Task ReceiveProjectorCommand(ProjectorCommands command)
+    public async Task ReceiveProjectorCommand(ProjectorCommandsEnum command)
     {
           logger.LogTrace($"Received projector command: {command.ToString()}");
         await projectorConnection.EnqueueCommand(command);
     }
     
-    public async Task ReceiveProjectorQuery(ProjectorCommands command)
+    public async Task ReceiveProjectorQuery(ProjectorCommandsEnum command)
     {
           logger.LogTrace($"Received projector query: {command.ToString()}");
         await projectorConnection.EnqueueQuery(command);
@@ -92,12 +92,10 @@ public class GUIHub : Hub
     
         if (isLongPress)
         {
-            // Handle long press logic
             await adbConnection.EnqueueLongPressCommand(command);
         }
         else
         {
-            // Handle regular short press
             await adbConnection.EnqueueCommand(command);
         }
     }

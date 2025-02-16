@@ -5,6 +5,7 @@
       @pointerdown="startPress"
       @pointerup="endPress.bind(this, false)"
       @pointerleave="endPress.bind(this, true)"
+      @contextmenu.prevent
   >
     <slot></slot>
   </button>
@@ -45,6 +46,11 @@ export default defineComponent({
   },
   methods: {
     startPress(): void {
+      // Prevent any press actions if the button is disabled
+      if (this.disabled) {
+        return;
+      }
+
       // Record the start time of the press
       this.pressStartTime = Date.now();
 
@@ -60,6 +66,11 @@ export default defineComponent({
     },
 
     endPress(isCancelled: boolean): void {
+      // Prevent any press actions if the button is disabled
+      if (this.disabled) {
+        return;
+      }
+
       // Clear the timer immediately if it exists
       if (this.pressTimer) {
         window.clearTimeout(this.pressTimer);
@@ -101,5 +112,10 @@ export default defineComponent({
 button {
   margin: 10px;
   padding: 10px;
+
+  /* Prevent text selection */
+  user-select: none;
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10+ */
 }
 </style>
