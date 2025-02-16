@@ -92,7 +92,7 @@ public class GUIHub : Hub
     
         if (isLongPress)
         {
-            await adbConnection.EnqueueCommand(command);
+            await adbConnection.EnqueueLongPressCommand(command);
         }
         else
         {

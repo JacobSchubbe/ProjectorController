@@ -2,13 +2,6 @@ using Microsoft.AspNetCore.Connections;
 
 namespace ProjectController.QueueManagement;
 
-public interface ICommand<TCommand> where TCommand : Enum
-{
-    TCommand CommandType { get; }
-    Func<ICommand<TCommand>, Task<string>> SendCommand { get; }
-    Func<ICommand<TCommand>, string, Task> Callback { get; }
-}
-
 public class CommandRunner<TCommand, TCommandType>
     where TCommandType : Enum
     where TCommand : ICommand<TCommandType>
@@ -99,8 +92,8 @@ public class CommandRunner<TCommand, TCommandType>
                         if (command == null)
                             throw new InvalidOperationException("Command was null.");
                         
-                        var response = await command.SendCommand.Invoke(command);
-                        await command.Callback(command, response);
+                        var response = await command.SendCommand.Invoke();
+                        await command.Callback(response);
                     }
                 }
                 catch (Exception e)
