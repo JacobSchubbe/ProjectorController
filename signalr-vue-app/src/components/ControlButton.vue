@@ -45,6 +45,11 @@ export default defineComponent({
   },
   methods: {
     startPress(): void {
+      // Prevent any press actions if the button is disabled
+      if (this.disabled) {
+        return;
+      }
+
       // Record the start time of the press
       this.pressStartTime = Date.now();
 
@@ -60,6 +65,11 @@ export default defineComponent({
     },
 
     endPress(isCancelled: boolean): void {
+      // Prevent any press actions if the button is disabled
+      if (this.disabled) {
+        return;
+      }
+
       // Clear the timer immediately if it exists
       if (this.pressTimer) {
         window.clearTimeout(this.pressTimer);

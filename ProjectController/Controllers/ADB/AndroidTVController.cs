@@ -1,25 +1,24 @@
 using Microsoft.AspNetCore.SignalR;
-using ProjectController.Controllers.Projector;
 using ProjectController.QueueManagement;
 
 namespace ProjectController.Controllers.ADB;
 
 public class AndroidTVController
 {
-    private readonly ILogger<ProjectorController> logger;
+    private readonly ILogger<AndroidTVController> logger;
     private readonly IHubContext<GUIHub> hub;
     private readonly AdbController adbController;
-    private readonly CommandRunner<KeyCodes> commandRunner;
+    private readonly CommandRunner<AndroidTVCommand, KeyCodes> commandRunner;
     private string ip => adbController.Ip;
-    public AndroidTVController(ILogger<ProjectorController> logger, IHubContext<GUIHub> hub, AdbController adbController, CommandRunner<KeyCodes> commandRunner)
+    public AndroidTVController(ILogger<AndroidTVController> logger, IHubContext<GUIHub> hub, AdbController adbController, CommandRunner<AndroidTVCommand, KeyCodes> commandRunner)
     {
         this.logger = logger;
         this.hub = hub;
         this.adbController = adbController;
         this.commandRunner = commandRunner;
         adbController.AdbClient.RegisterOnDisconnect(OnDisconnected);
-        adbController.AdbClient.RegisterOnVpnConnect(() => SendQueryResponseToClients(KeyCodes.VpnStatusQuery, true.ToString()));
-        adbController.AdbClient.RegisterOnVpnDisconnect(() => SendQueryResponseToClients(KeyCodes.VpnStatusQuery, false.ToString()));
+        adbController.AdbClient.RegisterOnVpnConnect(() => SendQueryResponseToClients(new AndroidTVCommand(KeyCodes.VpnStatusQuery, _ => Task.FromResult(string.Empty), SendQueryResponseToClients), true.ToString()));
+        adbController.AdbClient.RegisterOnVpnDisconnect(() => SendQueryResponseToClients(new AndroidTVCommand(KeyCodes.VpnStatusQuery, _ => Task.FromResult(string.Empty), SendQueryResponseToClients), false.ToString()));
         _ = Start();
     }
 
@@ -27,7 +26,7 @@ public class AndroidTVController
     {
         adbController.AdbClient.RegisterOnDisconnect(OnDisconnected);
         adbController.AdbClient.RegisterOnConnect(OnConnected);
-        await commandRunner.Start(SendCommand);
+        await commandRunner.Start();
         await adbController.Connect(CancellationToken.None);
     }
     
@@ -70,19 +69,24 @@ public class AndroidTVController
         await hub.Clients.All.SendAsync("IsConnectedToAndroidTVQuery", isConnected);
     }
 
-    public async Task EnqueueCommand(KeyCodes command)
+    public async Task EnqueueCommand(KeyCodes commandType)
     {
-        await EnqueueCommand(command, false);
+        await EnqueueCommand(new(commandType, command => SendCommand((AndroidTVCommand)command), SendCommandResponseToClients), false);
     }
     
-    public async Task EnqueueLongPressCommand(KeyCodes command)
+    public async Task EnqueueLongPressCommand(KeyCodes commandType)
     {
-        await EnqueueCommand(command, true);
+        await EnqueueCommand(new(commandType, command => SendCommand((AndroidTVCommand)command), SendCommandResponseToClients), true);
     }
 
-    private async Task EnqueueCommand(KeyCodes command, bool isLongPress)
+    private async Task EnqueueCommand(AndroidTVCommand command, bool isLongPress)
     {
-        await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients, allowDuplicates:true);
+        await commandRunner.EnqueueCommand(new[] { command }, allowDuplicates:true);
+    }
+    
+    public async Task EnqueueQuery(KeyCodes commandType)
+    {
+        await EnqueueCommand(new(commandType, command => SendCommand((AndroidTVCommand)command), SendQueryResponseToClients), false);
     }
     
     public async Task EnqueueOpenAppCommand(KeyCodes command)
@@ -103,23 +107,18 @@ public class AndroidTVController
         // await commandRunner.EnqueueCommand(new[] { command }, SendCommandResponseToClients);
     }
     
-    public async Task EnqueueQuery(KeyCodes command)
-    {
-        await commandRunner.EnqueueCommand(new[] { command }, SendQueryResponseToClients);
-    }
-
-    private async Task SendCommandResponseToClients(KeyCodes commandType, string response)
+    private async Task SendCommandResponseToClients(ICommand<KeyCodes> command, string response)
     {
         logger.LogInformation($"Sending command response: {response}");
         if (response == AdbConstants.AdbSuccess)
         {
-            switch (commandType)
+            switch (command.CommandType)
             {
                 case KeyCodes.VpnOff:
                 case KeyCodes.VpnOn:
                     await hub.Clients.All.SendAsync("ReceiveAndroidTVQueryResponse", new
                     {
-                        KeyCodes.VpnStatusQuery, currentStatus = commandType
+                        KeyCodes.VpnStatusQuery, currentStatus = command.CommandType
                     });
                     break;
             }
@@ -128,13 +127,14 @@ public class AndroidTVController
         {
             await hub.Clients.All.SendAsync("ReceiveMessage", new
             {
-                message = $"System Control Command: {commandType} was successfully executed. Response: {response}"
+                message = $"System Control Command: {command.CommandType} was successfully executed. Response: {response}"
             });
         }
     }
 
-    private async Task SendQueryResponseToClients(KeyCodes queryType, string rawResponse)
+    private async Task SendQueryResponseToClients(ICommand<KeyCodes> command, string rawResponse)
     {
+        var queryType = command.CommandType;
         logger.LogInformation($"Sending query response. Raw response: {rawResponse}");
         switch (queryType)
         {
@@ -151,11 +151,11 @@ public class AndroidTVController
         }
     }
 
-    private async Task<string> SendCommand(KeyCodes command)
+    private async Task<string> SendCommand(AndroidTVCommand command)
     {
         try
         {
-            return await adbController.KeyCommands[command]();
+            return await adbController.KeyCommands[command.CommandType](command.IsLongPress);
         }
         catch (Exception ex)
         {
