@@ -112,10 +112,45 @@ export default defineComponent({
 button {
   margin: 10px;
   padding: 10px;
-
   /* Prevent text selection */
   user-select: none;
   -webkit-user-select: none; /* Safari */
   -ms-user-select: none; /* IE 10+ */
 }
+
+.control-button {
+  background-color: #007bff; /* Primary button color */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  height: 100%;
+  width: 100%;
+  font-size: 2vh; /* Reduce font size to prevent overflow if content is long */
+  cursor: pointer;
+  text-align: center;
+  vertical-align: middle;
+  display: flex; /* Flexbox for centering content */
+  justify-content: center; /* Horizontally center content */
+  align-items: center; /* Vertically center content */
+  transition: background-color 0.3s ease, transform 0.2s;
+  white-space: normal; /* Allow text to wrap inside the button */
+  overflow: hidden; /* Hide any overflowing content */
+  text-overflow: ellipsis; /* Add ellipsis if text overflows */
+}
+
+.control-button:disabled {
+  background-color: #ccc; /* Grey background */
+  color: #666;           /* Greyed-out text */
+  cursor: not-allowed;   /* Change cursor to indicate it's not clickable */
+  opacity: 0.6;          /* Dim the button */
+}
+
+.control-button:hover {
+  background-color: #0056b3; /* Darker shade on hover */
+}
+
+.control-button:active {
+  transform: scale(0.95); /* Button press effect */
+}
+
 </style>

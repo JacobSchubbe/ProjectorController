@@ -101,12 +101,6 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.volume-slider-container {
-  display: flex; /* Horizontal alignment */
-  justify-content: center; /* Center items horizontally */
-  align-items: center; /* Align items vertically */
-  gap: 15px; /* Space between buttons and the slider */
-}
 
 .volume-slider {
   width: 150px; /* Adjust slider width as needed */
@@ -114,16 +108,28 @@ export default defineComponent({
   cursor: pointer;
 }
 
+.volume-button:hover {
+  background-color: #0056b3; /* Slightly darker shade on hover, similar to active tab hover */
+  transform: translateY(-2px); /* Lift the button slightly */
+}
+
+.volume-slider-container {
+  display: flex; /* Horizontal alignment */
+  justify-content: center; /* Center items horizontally */
+  align-items: center; /* Align items vertically */
+  gap: 15px; /* Space between buttons and the slider */
+}
+
 .volume-button {
-  background-color: #1c79cb;
-  color: white;
+  background-color: #1c79cb; /* Match the active tab color */
+  color: white;             /* White text for contrast */
   border: none;
-  border-radius: 8px;
-  padding: 10px;
+  padding: 10px 20px;                 /* Add padding for size */
+  border-radius: 8px;                 /* Rounded corners */
+  font-size: 14px;                    /* Medium text size */
+  font-weight: bold;                  /* Make text bold */
   cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  transition: transform 0.2s, background-color 0.3s;
+  transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth hover effect */
   margin: 10px;
   height: 10vh; /* Or dynamically calculated height */
 }
