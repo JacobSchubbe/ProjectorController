@@ -43,8 +43,8 @@ export default defineComponent({
 .switch {
   position: relative;
   display: inline-block;
-  width: 60px;
-  height: 34px;
+  width: min(13vw, 13vh);
+  height: min(5.5vw, 5.5vh);
 }
 
 /* Hide default HTML checkbox */
@@ -54,26 +54,11 @@ export default defineComponent({
   height: 0;
 }
 
-/* Slider styles */
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: 0.4s;
-  border-radius: 34px;
-}
-
 .slider::before {
   position: absolute;
   content: "";
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
+  height: min(5vw, 5vh);
+  width: min(5vw, 5vh);
   background-color: white;
   transition: 0.4s;
   border-radius: 50%;
@@ -84,7 +69,7 @@ input:checked + .slider {
 }
 
 input:checked + .slider::before {
-  transform: translateX(26px); /* Move handle to the right */
+  transform: translate3d(calc(min(12vw, 12vh) - min(5.5vw, 5.5vh)), calc(min(0.5vw, 0.5vh)), 0);
 }
 
 input:disabled + .slider {

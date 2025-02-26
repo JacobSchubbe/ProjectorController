@@ -9,58 +9,25 @@
       </ControlButton>
       <ControlButton
           :disabled="buttonDisabled"
-          :onClick="(isLongPress) => handleClick(adbConstants.KeyCodes.KEYCODE_DPAD_UP, isLongPress)"
-      >
-        Up
-      </ControlButton>
-      <ControlButton
-          :disabled="buttonDisabled"
           :onClick="(isLongPress) => handleClick(adbConstants.KeyCodes.KEYCODE_HOME, isLongPress)"
       >
         Home
       </ControlButton>
     </div>
-    <div class="control-row">
-      <ControlButton
-          :disabled="buttonDisabled"
-          :onClick="(isLongPress) => handleClick(adbConstants.KeyCodes.KEYCODE_DPAD_LEFT, isLongPress)"
-      >
-        Left
-      </ControlButton>
-      <ControlButton
-          styleClass="control-button enter-button"
-          :disabled="buttonDisabled"
-          :onClick="(isLongPress) => handleClick(adbConstants.KeyCodes.KEYCODE_ENTER, isLongPress)"
-      >
-        Enter
-      </ControlButton>
-      <ControlButton
-          :disabled="buttonDisabled"
-          :onClick="(isLongPress) => handleClick(adbConstants.KeyCodes.KEYCODE_DPAD_RIGHT, isLongPress)"
-      >
-        Right
-      </ControlButton>
-    </div>
-    <div class="control-row">
-      <ControlButton
-          :disabled="buttonDisabled"
-          :onClick="(isLongPress) => handleClick(adbConstants.KeyCodes.KEYCODE_DPAD_DOWN, isLongPress)"
-      >
-        Down
-      </ControlButton>
-    </div>
+    <Dpad :buttonDisabled="buttonDisabled"
+          :handleClick="(keyCode, isLongPress) => handleClick(keyCode, isLongPress)"/>
   </div>
 </template>
 
 <script lang="ts" setup>
+import Dpad from "@/components/DpadControl.vue";
 import * as adbConstants from "@/Constants/AdbConstants";
-import ControlButton from "@/components/ControlButton.vue";
+import ControlButton from "@/components/ControlButton.vue"
 import { defineProps } from "vue";
 
 defineProps<{
   buttonDisabled: Boolean; // Passed down from the parent component
   handleClick: Function;     // Function to handle button clicks
-  availableHeight: number;
 }>();
 
 

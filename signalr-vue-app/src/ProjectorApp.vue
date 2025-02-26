@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div id="app-container">
     <div class="header-container">
       <Dropdown
           class="dropdown-container"
@@ -26,7 +26,7 @@
         </div>
         <div class="toggle-container">
           <label class="toggle-label">
-            Projector Power
+            Power
           </label>
           <ToggleSwitch
               :isChecked="state.ProjectorPoweredOn === projectorConstants.ToggleStatusGui.On"
@@ -44,7 +44,7 @@
 
     <!-- Tab Content Section -->
     <div class="content-container">
-      <AdbKeyCodesTab
+      <AndroidTVButtons
           v-if="selectedTab === 'adb'"
           :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidCommand"
@@ -93,7 +93,7 @@ import { SignalRInstance } from "./SignalRServiceManager";
 import * as projectorConstants from "./Constants/ProjectorConstants";
 import Dropdown from "@/components/DropDown.vue";
 import ToggleSwitch from "@/components/ToggleSwitch.vue";
-import AdbKeyCodesTab from "@/Views/AndroidTVButtonLayout.vue";
+import AndroidTVButtons from "@/Views/AndroidTVButtonLayout.vue";
 import AndroidAppsTab from "@/Views/AndroidAppsButtonLayout.vue";
 import TvCommandsTab from "@/Views/TVControlButtonLayout.vue";
 import VolumeSlider from "@/components/VolumeSlider.vue";
@@ -210,24 +210,51 @@ html, body {
   padding: 0;
   width: 100%;
   box-sizing: border-box; /* Consistent box model */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+.app-container {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  justify-items: center;
+  align-items: center;
 }
 
 
+.header-container {
+  display: flex; /* Use Flexbox to handle layout */
+  flex-direction: row; /* Lay elements out horizontally */
+  align-items: center; /* Vertically align elements in the center */
+  justify-content: space-between; /* Evenly distribute space between children */
+  height: min(10vh, 10vw); /* Set height based on view height */
+  padding: 0 2vw; /* Add horizontal padding for spacing */
+  background-color: #f8f9fa; /* Optional background for header */
+  border-bottom: 1px solid #ddd; /* Optional bottom border for styling */
+  box-sizing: border-box; /* Ensure padding is included in height/width */
+}
 
-
-
-
-/* Each section (1/3 width) */
 .dropdown-container {
-  display: flex; /* Use flexbox for centering */
-  justify-content: center; /* Center content horizontally in each section */
-  align-items: center; /* Center content vertically in each section */
-  text-align: center; /* Center text within the section */
-  padding-left: 2vw;
+  flex: 1; /* Allow the dropdown to take one portion of the space */
+  display: flex; /* Align the inner contents */
+  justify-content: center; /* Center dropdown horizontally */
+  align-items: center; /* Center dropdown vertically */
+  font-size: min(2.5vh, 2.5vw); /* Set font size relative to viewport height */
+}
+
+.dropdown-container select {
+  height: min(8vh, 8vw);
+  width: min(20vw, 20vh);
+  font-size: min(3vw, 3vh)
 }
 
 .toggles-container {
-  display: flex;
+  flex: 1; /* Allow toggles to take twice as much space as the dropdown */
+  display: flex; /* Use Flexbox for alignment */
+  justify-content: space-evenly; /* Distribute toggles evenly */
+  align-items: center; /* Vertically align elements in the container */
+  gap: 2vw; /* Add space between toggle groups */
 }
 
 /* Toggle container for label and switch alignment */
@@ -235,35 +262,12 @@ html, body {
   display: flex; /* Set as a row layout */
   flex-direction: row; /* Ensure horizontal alignment */
   align-items: center; /* Vertically align the label and toggle */
-  gap: 10px; /* Add space between the label and the ToggleSwitch */
-  padding-right: 2vw;
-  padding-left: 2vw;
+  gap: 1vw; /* Add space between the label and the ToggleSwitch */
 }
 
-
-
-/* Align text within the toggle container */
-.centered-text {
-  text-align: center; /* Center text */
-  margin-bottom: 8px; /* Add spacing between label and toggle switch */
+.toggle-label {
+  font-size: min(2.5vh, 2.5vw); /* Set font size relative to viewport height */
 }
-
-label {
-  font-size: 14px; /* Optional: Adjust label font size */
-  margin: 0;
-}
-
-.right-aligned {
-  display: flex;
-  flex-direction: column; /* Optional: stack text and toggle vertically */
-  align-items: flex-end; /* Align items to the right */
-  text-align: right; /* Align text within the container to the right */
-  white-space: nowrap; /* Prevent text from wrapping unless desired */
-}
-
-
-
-
 
 
 
@@ -334,14 +338,6 @@ input:disabled + .slider::before {
 
 
 
-.header-container {
-  display: flex; /* Create flex container for horizontal row */
-  justify-content: space-between;
-  height: 5vh;
-  width: 100%; /* Full width of screen */
-  background-color: #f8f9fa; /* Optional: Light background */
-  border-bottom: 1px solid #ddd; /* Optional: Divider */
-}
 
 
 
@@ -378,7 +374,7 @@ input:disabled + .slider::before {
   max-width: 100%;
   margin: 0;
   padding: 0;
-  height: 20vh; /* Or dynamically calculated height */
+  height: 15vh; /* Or dynamically calculated height */
   overflow: hidden;
   display: flex;               /* Use flexbox */
   flex-direction: column;      /* Stack rows vertically (column direction) */
@@ -403,7 +399,7 @@ input:disabled + .slider::before {
 /* Volume Row */
 .volume-row {
   display: flex;                      /* Use flexbox for horizontal alignment */
-  height: 14vh;
+  height: 9vh;
   justify-content: center;            /* Center the volume buttons horizontally */
   align-items: center;                /* Align buttons vertically */
   border-bottom: 1px solid #666;      /* Divider between rows */
@@ -428,12 +424,11 @@ input:disabled + .slider::before {
   border-radius: 10px; /* Rounded corners */
   font-size: 3vh; /* Readable font size */
   font-weight: 600; /* Slightly bold text for better readability */
-  padding: 10px 0; /* Padding for the button text */
   cursor: pointer; /* Indicate clickability */
   transition: all 0.3s ease; /* Smooth animation on hover/focus */
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
   height: 5vh;
-  width: 33vh;
+  width: 33vw;
 }
 
 .tab-button.active {

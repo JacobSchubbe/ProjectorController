@@ -145,10 +145,6 @@ button {
   opacity: 0.6;          /* Dim the button */
 }
 
-.control-button:hover {
-  background-color: #0056b3; /* Darker shade on hover */
-}
-
 .control-button:active {
   transform: scale(0.95); /* Button press effect */
 }

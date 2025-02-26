@@ -103,14 +103,9 @@ export default defineComponent({
 <style scoped>
 
 .volume-slider {
-  width: 150px; /* Adjust slider width as needed */
+  width: 45vw; /* Adjust slider width as needed */
   accent-color: #1c79cb; /* Customize slider color */
   cursor: pointer;
-}
-
-.volume-button:hover {
-  background-color: #0056b3; /* Slightly darker shade on hover, similar to active tab hover */
-  transform: translateY(-2px); /* Lift the button slightly */
 }
 
 .volume-slider-container {
@@ -126,12 +121,13 @@ export default defineComponent({
   border: none;
   padding: 10px 20px;                 /* Add padding for size */
   border-radius: 8px;                 /* Rounded corners */
-  font-size: 14px;                    /* Medium text size */
+  font-size: min(3vw, 3vh);                    /* Medium text size */
   font-weight: bold;                  /* Make text bold */
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth hover effect */
   margin: 10px;
-  height: 10vh; /* Or dynamically calculated height */
+  height: 7vh; /* Or dynamically calculated height */
+  width: 17vw;
 }
 
 .volume-button:disabled {
