@@ -101,6 +101,13 @@ export default defineComponent({
 </script>
 
 <style scoped>
+
+.volume-slider {
+  width: 45vw; /* Adjust slider width as needed */
+  accent-color: #1c79cb; /* Customize slider color */
+  cursor: pointer;
+}
+
 .volume-slider-container {
   display: flex; /* Horizontal alignment */
   justify-content: center; /* Center items horizontally */
@@ -108,24 +115,19 @@ export default defineComponent({
   gap: 15px; /* Space between buttons and the slider */
 }
 
-.volume-slider {
-  width: 150px; /* Adjust slider width as needed */
-  accent-color: #1c79cb; /* Customize slider color */
-  cursor: pointer;
-}
-
 .volume-button {
-  background-color: #1c79cb;
-  color: white;
+  background-color: #1c79cb; /* Match the active tab color */
+  color: white;             /* White text for contrast */
   border: none;
-  border-radius: 8px;
-  padding: 10px;
+  padding: 10px 20px;                 /* Add padding for size */
+  border-radius: 8px;                 /* Rounded corners */
+  font-size: min(3vw, 3vh);                    /* Medium text size */
+  font-weight: bold;                  /* Make text bold */
   cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  transition: transform 0.2s, background-color 0.3s;
+  transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth hover effect */
   margin: 10px;
-  height: 10vh; /* Or dynamically calculated height */
+  height: 7vh; /* Or dynamically calculated height */
+  width: 17vw;
 }
 
 .volume-button:disabled {

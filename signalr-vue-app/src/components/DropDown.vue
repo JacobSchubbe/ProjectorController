@@ -42,3 +42,12 @@ export default defineComponent({
   },
 });
 </script>
+
+<style scoped>
+
+select {
+  margin: 10px;
+  padding: 5px;
+}
+
+</style>

@@ -1,6 +1,6 @@
 <template>
   <div class="grid-containers">
-    <div class="control-row" :style="{ height: `${buttonSize}px`, '--buttonSize': `${buttonSize}px` }">
+    <div class="control-row">
       <ControlButton
         :onClick="() => handleClick(tvConstants.IRCommands.KEY_POWER)"
         class="red-button"
@@ -18,7 +18,7 @@
         Mute
       </ControlButton>
     </div>
-    <div class="control-row" :style="{ height: `${buttonSize}px`, '--buttonSize': `${buttonSize}px` }">
+    <div class="control-row">
       <ControlButton
         :onClick="() => handleClick(tvConstants.IRCommands.KEY_EPG)"
       >
@@ -34,7 +34,7 @@
         Page+
       </ControlButton>
     </div>
-    <div class="control-row" :style="{ height: `${buttonSize}px`, '--buttonSize': `${buttonSize}px` }">
+    <div class="control-row">
       <ControlButton
         :onClick="() => handleClick(tvConstants.IRCommands.KEY_AUDIO)"
       >
@@ -51,7 +51,7 @@
         Page-
       </ControlButton>
     </div>
-    <div class="control-row" :style="{ height: `${buttonSize}px`, '--buttonSize': `${buttonSize}px` }">
+    <div class="control-row">
       <ControlButton
         :onClick="() => handleClick(tvConstants.IRCommands.KEY_MENU)"
       >
@@ -69,7 +69,7 @@
         Exit
       </ControlButton>
     </div>
-    <div class="control-row" :style="{ height: `${buttonSize}px`, '--buttonSize': `${buttonSize}px` }">
+    <div class="control-row">
       <ControlButton
         :onClick="() => handleClick(tvConstants.IRCommands.BTN_DPAD_LEFT)"
         class="green-button"
@@ -89,7 +89,7 @@
         Right
       </ControlButton>
     </div>
-    <div class="control-row" :style="{ height: `${buttonSize}px`, '--buttonSize': `${buttonSize}px` }">
+    <div class="control-row">
       <ControlButton
         :onClick="() => handleClick(tvConstants.IRCommands.KEY_FAVORITES)"
       >
@@ -107,7 +107,7 @@
         TV/Radio
       </ControlButton>
     </div>
-    <div class="control-row" :style="{ height: `${buttonSize}px`, '--buttonSize': `${buttonSize}px` }">
+    <div class="control-row">
       <ControlButton
         :onClick="() => handleClick(tvConstants.IRCommands.KEY_NUMERIC_1)"
       >
@@ -129,7 +129,7 @@
         Recall
       </ControlButton>
     </div>
-    <div class="control-row" :style="{ height: `${buttonSize}px`, '--buttonSize': `${buttonSize}px` }">
+    <div class="control-row">
       <ControlButton
         :onClick="() => handleClick(tvConstants.IRCommands.KEY_NUMERIC_4)"
       >
@@ -151,7 +151,7 @@
         Info
       </ControlButton>
     </div>
-    <div class="control-row" :style="{ height: `${buttonSize}px`, '--buttonSize': `${buttonSize}px` }">
+    <div class="control-row">
       <ControlButton
         :onClick="() => handleClick(tvConstants.IRCommands.KEY_NUMERIC_7)"
       >
@@ -179,54 +179,29 @@
 <script lang="ts" setup>
 import * as tvConstants from "@/Constants/TVConstants";
 import ControlButton from "@/components/ControlButton.vue";
-import { defineProps, computed } from "vue";
+import { defineProps } from "vue";
 
-const props = defineProps<{
+defineProps<{
   handleClick: () => void;
-  availableHeight: number;
 }>();
-
-// Dynamically calculate button size
-const buttonSize = computed(() => {
-  const numRows = 9; // Number of button rows (change per your layout)
-  const marginsPerRow = 2; // Total margin per row
-  return (props.availableHeight - marginsPerRow * numRows) / numRows;
-});
 
 </script>
 
 <style scoped>
+
 .control-row {
   display: flex; /* Ensure buttons in the row are horizontally aligned */
+  height: 8vh;
   justify-content: space-between; /* Space between buttons */
   align-items: center; /* Align buttons vertically at the center */
-  margin-bottom: 3px; /* Add padding between rows */
-}
-.grid-container {
-  display: grid;
-  height: calc(100vh - 60px); /* Full height minus the bottom tab-container */
-  grid-template-columns: repeat(3, 1fr); /* 3 buttons per row */
-  grid-template-rows: auto; /* Rows adjust automatically based on content */
-  gap: 10px; /* Spacing between buttons */
-  padding: 10px; /* Optional padding for spacing */
-  box-sizing: border-box; /* Make padding included in height/width */
-  overflow: hidden; /* Prevent overflow outside the container */
 }
 
-button,
-.ControlButton { /* If Buttons use a custom component */
-  width: 100%; /* Buttons should fill their grid cell */
-  height: 100%; /* Height matches the row height */
-  max-height: 4rem;
-  font-size: clamp(0.25rem, calc(0.3 * var(--buttonSize)), 1.3rem); /* Responsive and constrained */
-  display: flex; /* Flexbox to align content */
-  justify-content: center; /* Center-align text horizontally */
-  align-items: center; /* Center-align text vertically */
-  border: 1px solid #ccc;
-  background-color: #007bff;
-  color: white;
-  border-radius: 5px; /* Optional rounded corners */
-  box-sizing: border-box;
+.grid-container {
+  display: grid;
+  height: 100%;
+  width: 100%;
+  grid-template-columns: repeat(3, 1fr); /* 3 buttons per row */
+  grid-template-rows: auto; /* Rows adjust automatically based on content */
 }
 
 @media (max-width: 768px) {

@@ -1,18 +1,14 @@
 <template>
-  <div id="app">
+  <div id="app-container">
     <div class="header-container">
-      <!-- Left Section (Dropdown Menu) -->
-      <div class="header-item">
-        <Dropdown
-            label="Select Input:"
-            v-model="state.selectedInput"
-            :options="inputOptionsComputed"
-            @change="handleDropdownChange"
-        />
-      </div>
-      
-      <!-- Right Section (Projector Power Toggle) -->
-      <div class="header-section">
+      <Dropdown
+          class="dropdown-container"
+          label="Select Input:"
+          v-model="state.selectedInput"
+          :options="inputOptionsComputed"
+          @change="handleDropdownChange"
+      />
+      <div class="toggles-container">
         <div class="toggle-container">
           <label class="toggle-label">
             VPN
@@ -30,7 +26,7 @@
         </div>
         <div class="toggle-container">
           <label class="toggle-label">
-            Projector Power
+            Power
           </label>
           <ToggleSwitch
               :isChecked="state.ProjectorPoweredOn === projectorConstants.ToggleStatusGui.On"
@@ -42,29 +38,26 @@
                 'power-toggle-on': state.ProjectorPoweredOn === projectorConstants.ToggleStatusGui.Off
               }"
           />
-        </div>
+        </div>        
       </div>
     </div>
 
     <!-- Tab Content Section -->
-    <div>
-      <AdbKeyCodesTab
+    <div class="content-container">
+      <AndroidTVButtons
           v-if="selectedTab === 'adb'"
           :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidCommand"
-          :availableHeight="availableHeight"
       />
       <AndroidAppsTab
           v-if="selectedTab === 'apps'"
           :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidOpenAppCommand"
           :apps="availableApps"
-          :availableHeight="availableHeight"
       />
       <TvCommandsTab
           v-if="selectedTab === 'tv'"
           :handleClick="handleClickTVCommand"
-          :availableHeight="availableHeight"
       />
     </div>
 
@@ -100,7 +93,7 @@ import { SignalRInstance } from "./SignalRServiceManager";
 import * as projectorConstants from "./Constants/ProjectorConstants";
 import Dropdown from "@/components/DropDown.vue";
 import ToggleSwitch from "@/components/ToggleSwitch.vue";
-import AdbKeyCodesTab from "@/Views/AndroidTVButtonLayout.vue";
+import AndroidTVButtons from "@/Views/AndroidTVButtonLayout.vue";
 import AndroidAppsTab from "@/Views/AndroidAppsButtonLayout.vue";
 import TvCommandsTab from "@/Views/TVControlButtonLayout.vue";
 import VolumeSlider from "@/components/VolumeSlider.vue";
@@ -108,27 +101,10 @@ import { useProjector } from "@/composables/useProjector";
 import * as adbConstants from "@/Constants/AdbConstants";
 import * as hdmiSwitchConstants from "@/Constants/HdmiSwitchConstants";
 
-// Reactive variable to store available height
-const availableHeight = ref(0);
-
 const handleVolumeChange = (newVolume: number) => {
   console.log(`Volume updated: ${newVolume}`);
   state.targetVolume = newVolume;
   SignalRInstance.sendProjectorVolumeSet(newVolume);
-};
-
-const calculateAvailableHeight = () => {
-  // Query the size of the top header and bottom tab menu
-  const header = document.querySelector(".header-container") as HTMLElement;
-  const tabContainer = document.querySelector(".tab-container") as HTMLElement;
-
-  // Calculate space between the menus
-  const totalHeight = window.innerHeight;
-  const headerHeight = header?.offsetHeight || 0;
-  const tabHeight = tabContainer?.offsetHeight || 0;
-
-  // Assign available height
-  availableHeight.value = totalHeight - headerHeight - tabHeight;
 };
 
 const {
@@ -183,12 +159,6 @@ const availableApps = ref([
 const selectedTab = ref("adb");
 
 onMounted(async () => {
-  calculateAvailableHeight();
-  window.addEventListener("resize", calculateAvailableHeight);
-  window.addEventListener("orientationchange", calculateAvailableHeight); // Handle rotation on mobile
-});
-
-onMounted(async () => {
   await SignalRInstance.initialize(
       (isConnected) => { handleProjectorConnectionStateChange(isConnected); },
       (isConnected) => { handleAndroidTVConnectionStateChange(isConnected); },
@@ -207,11 +177,6 @@ onMounted(() => {
 onUnmounted(() => {
   console.log("App unmounted. Removing tab focus listener.");
   window.removeEventListener("focus", onTabFocused);
-});
-
-onUnmounted(() => {
-  window.removeEventListener("resize", calculateAvailableHeight);
-  window.removeEventListener("orientationchange", calculateAvailableHeight);
 });
 
 const onTabFocused = () => {
@@ -233,6 +198,11 @@ const onTabFocused = () => {
 
 </script>
 
+
+
+
+
+
 <style>
 
 html, body {
@@ -240,123 +210,51 @@ html, body {
   padding: 0;
   width: 100%;
   box-sizing: border-box; /* Consistent box model */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
-button {
-  margin: 10px;
-  padding: 10px;
-}
-
-select {
-  margin: 10px;
-  padding: 5px;
-}
-
-.projector-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px; /* Spacing between rows */
-}
-
-.control-row {
+.app-container {
+  height: 100%;
+  width: 100%;
   display: flex;
   justify-content: center;
-  gap: 10px; /* Spacing between buttons */
-}
-
-.control-button {
-  background-color: #007bff; /* Primary button color */
-  color: white;
-  border: none;
-  border-radius: 5px;
-  width: 80px; /* Fixed width */
-  height: 80px; /* Fixed height */
-  font-size: 14px; /* Reduce font size to prevent overflow if content is long */
-  cursor: pointer;
-  text-align: center;
-  vertical-align: middle;
-  display: flex; /* Flexbox for centering content */
-  justify-content: center; /* Horizontally center content */
-  align-items: center; /* Vertically center content */
-  transition: background-color 0.3s ease, transform 0.2s;
-  white-space: normal; /* Allow text to wrap inside the button */
-  overflow: hidden; /* Hide any overflowing content */
-  text-overflow: ellipsis; /* Add ellipsis if text overflows */
-}
-
-.control-button:disabled {
-  background-color: #ccc; /* Grey background */
-  color: #666;           /* Greyed-out text */
-  cursor: not-allowed;   /* Change cursor to indicate it's not clickable */
-  opacity: 0.6;          /* Dim the button */
-}
-
-.control-button:hover {
-  background-color: #0056b3; /* Darker shade on hover */
-}
-
-.control-button:active {
-  transform: scale(0.95); /* Button press effect */
-}
-
-.enter-button {
-  background-color: #28a745; /* Distinct color for the Enter button */
-}
-
-.enter-button:hover {
-  background-color: #1e7e34; /* Darker shade on hover for Enter button */
-}
-
-.media-button {
-  background-color: transparent; /* Make the button background fully transparent */
-  border: none; /* Remove borders for a cleaner visual */
-  padding: 0; /* Remove extra spacing around the image */
-  display: flex; /* Use flexbox for proper content alignment */
-  justify-content: center;
+  justify-items: center;
   align-items: center;
-  width: 80px; /* Button should remain square */
-  height: 80px; /* Fixed button height (equal to width) */
-  cursor: pointer;
-  overflow: hidden; /* Clip any overflow from the image */
 }
 
-.media-button:disabled {
-  opacity: 0.6;
-  pointer-events: none; /* Disable pointer interactions when disabled */
-}
-
-.media-icon {
-  width: 100%; /* Ensure image completely fills the button */
-  height: 100%; /* Scale image to fill height */
-  object-fit: cover; /* Make sure image covers the entire button evenly */
-  pointer-events: none; /* Ensure clicking on the image still triggers the button */
-}
 
 .header-container {
-  display: flex; /* Create flex container for horizontal row */
-  width: 100%; /* Full width of screen */
-  background-color: #f8f9fa; /* Optional: Light background */
-  border-bottom: 1px solid #ddd; /* Optional: Divider */
-  padding: 10px 0; /* Add some padding above and below header */
+  display: flex; /* Use Flexbox to handle layout */
+  flex-direction: row; /* Lay elements out horizontally */
+  align-items: center; /* Vertically align elements in the center */
+  justify-content: space-between; /* Evenly distribute space between children */
+  height: min(10vh, 10vw); /* Set height based on view height */
+  padding: 0 2vw; /* Add horizontal padding for spacing */
+  background-color: #f8f9fa; /* Optional background for header */
+  border-bottom: 1px solid #ddd; /* Optional bottom border for styling */
+  box-sizing: border-box; /* Ensure padding is included in height/width */
 }
 
-/* Each section (1/3 width) */
-.header-item {
-  flex: 1; /* Make each section take 1/3 of the container */
-  display: flex; /* Use flexbox for centering */
-  justify-content: center; /* Center content horizontally in each section */
-  align-items: center; /* Center content vertically in each section */
-  text-align: center; /* Center text within the section */
+.dropdown-container {
+  flex: 1; /* Allow the dropdown to take one portion of the space */
+  display: flex; /* Align the inner contents */
+  justify-content: center; /* Center dropdown horizontally */
+  align-items: center; /* Center dropdown vertically */
+  font-size: min(2.5vh, 2.5vw); /* Set font size relative to viewport height */
 }
 
-.header-section {
-  flex: 1; /* Each section takes 1/3 of the total width */
-  display: flex; /* Flexbox for aligning child elements */
-  justify-content: center; /* Center horizontally within section */
-  align-items: center; /* Center vertically within section */
-  text-align: center; /* Center text for labels */
-  padding: 0 10px; /* Optional: Horizontal padding */
+.dropdown-container select {
+  height: min(8vh, 8vw);
+  width: min(20vw, 20vh);
+  font-size: min(3vw, 3vh)
+}
+
+.toggles-container {
+  flex: 1; /* Allow toggles to take twice as much space as the dropdown */
+  display: flex; /* Use Flexbox for alignment */
+  justify-content: space-evenly; /* Distribute toggles evenly */
+  align-items: center; /* Vertically align elements in the container */
+  gap: 2vw; /* Add space between toggle groups */
 }
 
 /* Toggle container for label and switch alignment */
@@ -364,27 +262,17 @@ select {
   display: flex; /* Set as a row layout */
   flex-direction: row; /* Ensure horizontal alignment */
   align-items: center; /* Vertically align the label and toggle */
-  gap: 10px; /* Add space between the label and the ToggleSwitch */
+  gap: 1vw; /* Add space between the label and the ToggleSwitch */
 }
 
-/* Align text within the toggle container */
-.centered-text {
-  text-align: center; /* Center text */
-  margin-bottom: 8px; /* Add spacing between label and toggle switch */
+.toggle-label {
+  font-size: min(2.5vh, 2.5vw); /* Set font size relative to viewport height */
 }
 
-label {
-  font-size: 14px; /* Optional: Adjust label font size */
-  margin: 0;
-}
 
-.right-aligned {
-  display: flex;
-  flex-direction: column; /* Optional: stack text and toggle vertically */
-  align-items: flex-end; /* Align items to the right */
-  text-align: right; /* Align text within the container to the right */
-  white-space: nowrap; /* Prevent text from wrapping unless desired */
-}
+
+
+
 
 .power-toggle-disabled .slider::before {
   background-color: #666; /* Grey knob when disabled */
@@ -446,6 +334,38 @@ input:disabled + .slider::before {
   background-color: #666; /* Grey out the knob when disabled */
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+.content-container {
+  height: 75vh;
+  max-width: 100vw;
+  display: flex;
+  justify-self: center;
+  justify-content: center; /* Center horizontally within section */
+  align-items: center; /* Center vertically within section */
+  text-align: center; /* Center text for labels */
+}
+
+
+
+
+
+
+
+
+
+
 .tab-container {
   animation: slideUp 0.6s ease-out; /* Slide-up animation when the component loads */
   position: fixed; /* Keep the tabs pinned at the bottom */
@@ -454,7 +374,7 @@ input:disabled + .slider::before {
   max-width: 100%;
   margin: 0;
   padding: 0;
-  height: 20vh; /* Or dynamically calculated height */
+  height: 15vh; /* Or dynamically calculated height */
   overflow: hidden;
   display: flex;               /* Use flexbox */
   flex-direction: column;      /* Stack rows vertically (column direction) */
@@ -465,20 +385,50 @@ input:disabled + .slider::before {
   z-index: 10; /* Ensure this section stays above other content */
 }
 
+@keyframes slideUp {
+  from {
+    transform: translateY(100%); /* Start just below the viewport */
+    opacity: 0; /* Start invisible */
+  }
+  to {
+    transform: translateY(0); /* End in the default position */
+    opacity: 1; /* Fully visible */
+  }
+}
+
+/* Volume Row */
+.volume-row {
+  display: flex;                      /* Use flexbox for horizontal alignment */
+  height: 9vh;
+  justify-content: center;            /* Center the volume buttons horizontally */
+  align-items: center;                /* Align buttons vertically */
+  border-bottom: 1px solid #666;      /* Divider between rows */
+  background-color: #383838;          /* Optional: background color for better visibility */
+}
+
+/* Tab Row */
+.tab-row {
+  display: flex;
+  height: 6vh;
+  justify-content: space-between;   /* Ensure buttons are spaced evenly */
+  align-items: center;
+  width: 100%;                      /* Full width of the row */
+  gap: 10px;                        /* Space between buttons */
+}
+
 .tab-button {
-  flex: 1; /* Equal size for every button */
   text-align: center; /* Center-align button text */
   color: #fff; /* White text color */
   background: linear-gradient(145deg, #1c1c1e, #333333); /* Button gradient */
   border: 1px solid #3d3d3d; /* Subtle border for separation */
   border-radius: 10px; /* Rounded corners */
-  font-size: 16px; /* Readable font size */
+  font-size: 3vh; /* Readable font size */
   font-weight: 600; /* Slightly bold text for better readability */
-  padding: 10px 0; /* Padding for the button text */
   cursor: pointer; /* Indicate clickability */
   transition: all 0.3s ease; /* Smooth animation on hover/focus */
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
-  height: 6vh;
+  height: 5vh;
+  width: 33vw;
 }
 
 .tab-button.active {
@@ -499,58 +449,23 @@ input:disabled + .slider::before {
   background: linear-gradient(145deg, #222, #444); /* Darker color for interaction feedback */
 }
 
-/* Volume Row */
-.volume-row {
-  display: flex;                      /* Use flexbox for horizontal alignment */
-  justify-content: center;            /* Center the volume buttons horizontally */
-  align-items: center;                /* Align buttons vertically */
-  border-bottom: 1px solid #666;      /* Divider between rows */
-  background-color: #383838;          /* Optional: background color for better visibility */
-}
 
-/* Tab Row */
-.tab-row {
-  display: flex;
-  justify-content: space-between;   /* Ensure buttons are spaced evenly */
-  align-items: center;
-  width: 100%;                      /* Full width of the row */
-  gap: 10px;                        /* Space between buttons */
-}
 
-/* Volume Button Styles */
-.volume-button {
-  background-color: #1c79cb; /* Match the active tab color */
-  color: white;             /* White text for contrast */
-  border: none;
-  padding: 10px 20px;                 /* Add padding for size */
-  border-radius: 8px;                 /* Rounded corners */
-  font-size: 14px;                    /* Medium text size */
-  font-weight: bold;                  /* Make text bold */
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth hover effect */
-}
 
-/* Volume Button - Hover Effect */
-.volume-button:hover {
-  background-color: #0056b3; /* Slightly darker shade on hover, similar to active tab hover */
-  transform: translateY(-2px); /* Lift the button slightly */
-}
+
+
+
+
+
+
+
+
+
 
 /* Responsive Font Size for Smaller Screens */
 @media (max-width: 768px) {
   .tab-button {
     font-size: 14px; /* Reduce font size slightly on smaller devices */
-  }
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%); /* Start just below the viewport */
-    opacity: 0; /* Start invisible */
-  }
-  to {
-    transform: translateY(0); /* End in the default position */
-    opacity: 1; /* Fully visible */
   }
 }
 
