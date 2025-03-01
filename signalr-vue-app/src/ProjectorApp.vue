@@ -15,7 +15,7 @@
           </label>
           <ToggleSwitch
               :isChecked="state.VPNConnected === projectorConstants.ToggleStatusGui.On"
-              :disabled="state.VPNConnected === projectorConstants.ToggleStatusGui.Pending"
+              :disabled="state.VPNConnected === projectorConstants.ToggleStatusGui.Pending || buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
               @update:isChecked="handleVPNToggle"
               :class="{
                 'power-toggle-disabled': state.VPNConnected === projectorConstants.ToggleStatusGui.Pending,
@@ -41,13 +41,14 @@
         </div>        
       </div>
     </div>
-
+    
     <!-- Tab Content Section -->
     <div class="content-container">
       <AndroidTVButtons
           v-if="selectedTab === 'adb'"
           :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidCommand"
+          :SignalRInstance="SignalRInstance"
       />
       <AndroidAppsTab
           v-if="selectedTab === 'apps'"
@@ -58,6 +59,12 @@
       <TvCommandsTab
           v-if="selectedTab === 'tv'"
           :handleClick="handleClickTVCommand"
+      />
+      <SettingsTab
+          v-if="selectedTab === 'settings'"
+          :selectedOption="state.selectedImageMode"
+          :buttonDisabled="buttonDisabledWhenPoweredOff"
+          :SignalRInstance="SignalRInstance"
       />
     </div>
 
@@ -72,13 +79,12 @@
       </div>
       <div class="tab-row">
         <button
-            v-for="tab in tabs"
+            v-for="tab in filteredTabs"
             :key="tab.value"
-            :class="{ active: selectedTab === tab.value }"
+            :class="[(tab.class ? tab.class : 'tab-button'), { active: selectedTab === tab.value }]"            
             @click="selectedTab = tab.value"
-            class="tab-button"
         >
-          <i :class="tab.icon"></i> <!-- Add icon based on tab value -->
+          <img v-if="tab.icon" :src="tab.icon" :alt="tab.label" class="tab-icon" />
           <span>{{ tab.label }}</span>
         </button>
       </div>
@@ -96,10 +102,15 @@ import ToggleSwitch from "@/components/ToggleSwitch.vue";
 import AndroidTVButtons from "@/Views/AndroidTVButtonLayout.vue";
 import AndroidAppsTab from "@/Views/AndroidAppsButtonLayout.vue";
 import TvCommandsTab from "@/Views/TVControlButtonLayout.vue";
+import SettingsTab from "@/Views/Settings.vue";
 import VolumeSlider from "@/components/VolumeSlider.vue";
 import { useProjector } from "@/composables/useProjector";
 import * as adbConstants from "@/Constants/AdbConstants";
 import * as hdmiSwitchConstants from "@/Constants/HdmiSwitchConstants";
+
+const filteredTabs = computed(() => {
+  return tabs.value.filter((tab) => !tab.hidden);
+});
 
 const handleVolumeChange = (newVolume: number) => {
   console.log(`Volume updated: ${newVolume}`);
@@ -141,9 +152,10 @@ const inputOptionsComputed = computed(() => {
 });
 
 const tabs = ref([
-  { label: "SmartTV", value: "adb", icon: "fas fa-keyboard" },
-  { label: "Apps", value: "apps", icon: "fas fa-tv" },
-  { label: "TV Commands", value: "tv", icon: "fas fa-remote" }
+  { label: "SmartTV", value: "adb" },
+  { label: "Apps", value: "apps" },
+  { label: "TV Commands", value: "tv" },
+  { label: "", value: "settings", icon: "/assets/settings.png", class: "tab-button-with-icon", hidden: buttonDisabledWhenPoweredOff }
 ]);
 
 const availableApps = ref([
@@ -346,7 +358,6 @@ input:disabled + .slider::before {
 
 
 
-
 .content-container {
   height: 75vh;
   max-width: 100vw;
@@ -416,6 +427,30 @@ input:disabled + .slider::before {
   gap: 10px;                        /* Space between buttons */
 }
 
+
+.tab-icon {
+  width: 100%; /* Ensure image completely fills the button */
+  height: 100%; /* Scale image to fill height */
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none; /* Ensure clicking on the image still triggers the button */
+}
+
+.tab-button-with-icon {
+  text-align: center; /* Center-align button text */
+  color: #fff; /* White text color */
+  background: linear-gradient(145deg, #1c1c1e, #333333); /* Button gradient */
+  border: 1px solid #3d3d3d; /* Subtle border for separation */
+  border-radius: 10px; /* Rounded corners */
+  font-size: 3vh; /* Readable font size */
+  font-weight: 600; /* Slightly bold text for better readability */
+  cursor: pointer; /* Indicate clickability */
+  transition: all 0.3s ease; /* Smooth animation on hover/focus */
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+  height: 5vh;
+  width: 33vw;
+}
+
 .tab-button {
   text-align: center; /* Center-align button text */
   color: #fff; /* White text color */
@@ -448,18 +483,6 @@ input:disabled + .slider::before {
   transform: scale(0.95); /* Subtle shrink effect when clicking */
   background: linear-gradient(145deg, #222, #444); /* Darker color for interaction feedback */
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 /* Responsive Font Size for Smaller Screens */

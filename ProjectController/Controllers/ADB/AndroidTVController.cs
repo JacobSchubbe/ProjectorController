@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using ProjectController.Endpoints;
 using ProjectController.QueueManagement;
 
 namespace ProjectController.Controllers.ADB;
@@ -17,8 +18,8 @@ public class AndroidTVController
         this.adbController = adbController;
         this.commandRunner = commandRunner;
         adbController.AdbClient.RegisterOnDisconnect(OnDisconnected);
-        adbController.AdbClient.RegisterOnVpnConnect(() => SendQueryResponseToClients(new AndroidTVCommand(KeyCodes.VpnStatusQuery, _ => Task.FromResult(string.Empty), SendQueryResponseToClients, false), true.ToString()));
-        adbController.AdbClient.RegisterOnVpnDisconnect(() => SendQueryResponseToClients(new AndroidTVCommand(KeyCodes.VpnStatusQuery, _ => Task.FromResult(string.Empty), SendQueryResponseToClients, false), false.ToString()));
+        adbController.AdbClient.RegisterOnVpnConnect(() => SendQueryResponseToClients(new AndroidTVCommand(KeyCodes.VpnStatusQuery, _ => Task.FromResult(string.Empty), SendQueryResponseToClients, false.ToString()), true.ToString()));
+        adbController.AdbClient.RegisterOnVpnDisconnect(() => SendQueryResponseToClients(new AndroidTVCommand(KeyCodes.VpnStatusQuery, _ => Task.FromResult(string.Empty), SendQueryResponseToClients, false.ToString()), false.ToString()));
         _ = Start();
     }
 
@@ -69,16 +70,11 @@ public class AndroidTVController
         await hub.Clients.All.SendAsync("IsConnectedToAndroidTVQuery", isConnected);
     }
 
-    public async Task EnqueueCommand(KeyCodes commandType)
+    public async Task EnqueueCommand(KeyCodes commandType, string additionalParameter)
     {
-        await EnqueueCommand(new AndroidTVCommand(commandType, command => SendCommand((AndroidTVCommand)command), SendCommandResponseToClients, false));
+        await EnqueueCommand(new AndroidTVCommand(commandType, command => SendCommand((AndroidTVCommand)command), SendCommandResponseToClients, additionalParameter));
     }
     
-    public async Task EnqueueLongPressCommand(KeyCodes commandType)
-    {
-        await EnqueueCommand(new AndroidTVCommand(commandType, command => SendCommand((AndroidTVCommand)command), SendCommandResponseToClients, true));
-    }
-
     private async Task EnqueueCommand(AndroidTVCommand command)
     {
         await commandRunner.EnqueueCommand(new[] { command }, allowDuplicates:true);
@@ -86,7 +82,7 @@ public class AndroidTVController
     
     public async Task EnqueueQuery(KeyCodes commandType)
     {
-        await EnqueueCommand(new AndroidTVCommand(commandType, command => SendCommand((AndroidTVCommand)command), SendQueryResponseToClients, false));
+        await EnqueueCommand(new AndroidTVCommand(commandType, command => SendCommand((AndroidTVCommand)command), SendQueryResponseToClients, false.ToString()));
     }
     
     public async Task EnqueueOpenAppCommand(KeyCodes command)
@@ -155,8 +151,8 @@ public class AndroidTVController
     {
         try
         {
-            logger.LogInformation($"Sending command: {command.CommandType}, with long-press: {command.IsLongPress}.");
-            return await adbController.KeyCommands[command.CommandType](command.IsLongPress);
+            logger.LogInformation($"Sending command: {command.CommandType}, with additional parameter: {command.AdditionalParameter}.");
+            return await adbController.KeyCommands[command.CommandType](command.AdditionalParameter);
         }
         catch (Exception ex)
         {

@@ -4,12 +4,14 @@ using ProjectController.Communication.Tcp;
 using ProjectController.Controllers.ADB;
 using ProjectController.Controllers.HdmiSwitch;
 using ProjectController.Controllers.Projector;
+using ProjectController.Endpoints;
 using ProjectController.QueueManagement;
 using Serilog;
 using static ProjectController.Controllers.Projector.ProjectorConstants;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddSingleton<LogsController>();
 builder.Services.AddSingleton<TcpCommunication>();
 builder.Services.AddSingleton<SerialCommunication>();
 builder.Services.AddSingleton<ADBClient>();

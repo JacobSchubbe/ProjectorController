@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using ProjectController.Communication.Tcp;
+using ProjectController.Endpoints;
 using ProjectController.QueueManagement;
 using static ProjectController.Controllers.Projector.ProjectorConstants;
 
@@ -197,6 +198,13 @@ public class ProjectorController
             case ProjectorCommandsEnum.SystemControlVolumeDown:
                 logger.LogDebug($"Sending updated target volume to all clients: {commandType.ToString()}.");
                 await SendQueryResponse(ProjectorCommandsEnum.SystemControlVolumeQuery, targetVolume);
+                break;
+            case ProjectorCommandsEnum.ImageControlCinemaMode:
+            case ProjectorCommandsEnum.ImageControlBrightCinemaMode:
+            case ProjectorCommandsEnum.ImageControlDynamicMode:
+            case ProjectorCommandsEnum.ImageControlGameMode:
+                logger.LogDebug($"Sending updated image mode to all clients: {commandType.ToString()}.");
+                await SendQueryResponse(ProjectorCommandsEnum.ImageControlModeQuery, commandType);
                 break;
         }
     }

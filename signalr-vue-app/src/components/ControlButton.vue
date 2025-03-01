@@ -60,7 +60,7 @@ export default defineComponent({
       // Start timer for long press detection
       this.pressTimer = window.setTimeout(() => {
         this.isLongPress = true; // Mark as a long press
-        this.onClick(true); // Trigger long press handler
+        this.onClick('true'); // Trigger long press handler
         this.pressTimer = null; // Reset timer
       }, 800); // Long press threshold (800ms)
     },
@@ -82,7 +82,7 @@ export default defineComponent({
 
       // If it's not cancelled, and the press duration was below 800ms, trigger short press
       if (!isCancelled && pressDuration < 800 && !this.isLongPress) {
-        this.onClick(false); // Trigger short press handler
+        this.onClick('false'); // Trigger short press handler
       }
 
       // Reset `isLongPress` flag after handling

@@ -8,6 +8,7 @@ import * as tvConstants from "@/Constants/TVConstants";
 export function useProjector() {
   const state = reactive({
     selectedInput: -1,
+    selectedImageMode: -1,
     targetVolume: 0,
     GUIConnected: false,
     ProjectorConnected: false,
@@ -30,9 +31,9 @@ export function useProjector() {
 
   const handleVPNToggle = (isVPNOn: boolean) => {
     if (isVPNOn) {
-      handleClickAndroidCommand(adbConstants.KeyCodes.VpnOn, false);
+      handleClickAndroidCommand(adbConstants.KeyCodes.VpnOn, "");
     } else {
-      handleClickAndroidCommand(adbConstants.KeyCodes.VpnOff, false);
+      handleClickAndroidCommand(adbConstants.KeyCodes.VpnOff, "");
     }
   };
   
@@ -80,6 +81,10 @@ export function useProjector() {
   
   const handleProjectorQueryResponse = (queryType:Number, currentStatus:Number) => {
     switch (queryType) {
+      case projectorConstants.ProjectorCommands.ImageControlModeQuery:
+        console.log(`Projector Image Mode query response: ${currentStatus}`);
+        state.selectedImageMode = currentStatus as number;
+        break;
       case projectorConstants.ProjectorCommands.SystemControlVolumeQuery:
         console.log(`Projector Volume query response: ${currentStatus}`);
         state.targetVolume = currentStatus as number;
@@ -92,7 +97,6 @@ export function useProjector() {
         else if (currentStatus as projectorConstants.ProjectorCommands == projectorConstants.ProjectorCommands.SystemControlSourceHDMI3) {
           state.selectedInput = 0;
         }
-        
         break;
       case projectorConstants.ProjectorCommands.SystemControlPowerQuery:
         console.log(`Projector Power query response: ${currentStatus}`);
@@ -145,9 +149,9 @@ export function useProjector() {
     console.log(`TV Command sent: ${command}`);
   }
 
-  const handleClickAndroidCommand = async (command: adbConstants.KeyCodes, isLongPress: boolean) => {
-    SignalRInstance.sendAndroidCommand(command, isLongPress);
-    console.log(`Android Command sent: ${command}, IsLongPress: ${isLongPress}`);
+  const handleClickAndroidCommand = async (command: adbConstants.KeyCodes, additionalParameter: string) => {
+    SignalRInstance.sendAndroidCommand(command, additionalParameter);
+    console.log(`Android Command sent: ${command}, AdditionalParameter: ${additionalParameter}`);
   }
 
   const handleClickAndroidOpenAppCommand = async (command: adbConstants.KeyCodes) => {

@@ -31,6 +31,11 @@ public static class ProjectorConstants
         SystemInformationLampHoursQuery,
         SystemInformationOperationalTimeQuery,
         SystemInformationSignalStatusQuery,
+        ImageControlModeQuery,
+        ImageControlCinemaMode,
+        ImageControlBrightCinemaMode,
+        ImageControlDynamicMode,
+        ImageControlGameMode,
         ImageControlNaturalColorMode,
         ImageControlImageReverseHorizontalOn,
         ImageControlImageReverseHorizontalOff,
@@ -108,6 +113,12 @@ public static class ProjectorConstants
         { ProjectorCommandsEnum.ImageControlImageReverseVerticalQuery, "VREVERSE?" },
         
         // --- same for CONTRAST, DENSITY, TINT
+        { ProjectorCommandsEnum.ImageControlCinemaMode, "CMODE 15" },
+        { ProjectorCommandsEnum.ImageControlBrightCinemaMode, "CMODE 0C" },
+        { ProjectorCommandsEnum.ImageControlDynamicMode, "CMODE 06" },
+        { ProjectorCommandsEnum.ImageControlGameMode, "CMODE 0D" },
+        { ProjectorCommandsEnum.ImageControlModeQuery, "CMODE?" },
+        
         { ProjectorCommandsEnum.ImageControlBrightnessUp, "BRIGHT INC" },
         { ProjectorCommandsEnum.ImageControlBrightnessDown, "BRIGHT DEC" },
         { ProjectorCommandsEnum.ImageControlBrightnessQuery, "BRIGHT?" },

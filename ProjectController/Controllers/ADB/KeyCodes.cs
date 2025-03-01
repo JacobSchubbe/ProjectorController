@@ -326,4 +326,6 @@ public enum KeyCodes : int
     VpnOn = 10010,
     VpnOff = 10011,
     VpnStatusQuery = 10012,
+    
+    TextInput = 10013
 }
