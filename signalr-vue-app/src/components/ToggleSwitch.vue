@@ -69,7 +69,11 @@ input:checked + .slider {
 }
 
 input:checked + .slider::before {
-  transform: translate3d(calc(min(12vw, 12vh) - min(5.5vw, 5.5vh)), calc(min(0.5vw, 0.5vh)), 0);
+  transform: translate3d(calc(min(12vw, 12vh) - min(5.5vw, 5.5vh)), calc(min(0.6vw, 0.6vh)), 0);
+}
+
+input:not(:checked) + .slider::before {
+  transform: translate3d(0, calc(min(0.6vw, 0.6vh)), 0); /* Define initial position for unchecked state */
 }
 
 input:disabled + .slider {

@@ -517,7 +517,7 @@ public class ADBClient
         return Task.FromResult(ExecuteShellCommand(command));
     }
     
-    public void SendTextInput(string text, bool encodeSpaces = true)
+    public Task<string> SendTextInput(string text, bool encodeSpaces = true)
     {
         GetDevicesAndSetSelectedDevice();
         if (_selectedDevice == null)
@@ -529,7 +529,7 @@ public class ADBClient
         var processedText = encodeSpaces ? text.Replace(" ", "%s") : text;
 
         // Execute input text command
-        ExecuteShellCommand($"input text {processedText}");
+        return Task.FromResult(ExecuteShellCommand($"input text {processedText}"));
     }
     
     private bool IsSurfsharkVpnConnected()

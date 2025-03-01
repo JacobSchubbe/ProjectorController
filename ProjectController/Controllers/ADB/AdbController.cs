@@ -61,21 +61,34 @@ public class AdbController
     {
         return AdbClient;
     }
-    
-    public Dictionary<KeyCodes, Func<bool, Task<string>>> KeyCommands => new()
+
+    private bool TryParseBoolean(string booleanString)
     {
-        { KeyCodes.KEYCODE_HOME, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_HOME, isLongPress) },
-        { KeyCodes.KEYCODE_TV, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV, isLongPress) },
-        { KeyCodes.KEYCODE_BACK, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_BACK, isLongPress) },
-        { KeyCodes.KEYCODE_DPAD_UP, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_UP, isLongPress) },
-        { KeyCodes.KEYCODE_DPAD_DOWN, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_DOWN, isLongPress) },
-        { KeyCodes.KEYCODE_DPAD_LEFT, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_LEFT, isLongPress) },
-        { KeyCodes.KEYCODE_DPAD_RIGHT, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_RIGHT, isLongPress) },
-        { KeyCodes.KEYCODE_ENTER, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_ENTER, isLongPress) },
+        return booleanString.ToLower() switch
+        {
+            "true" => true,
+            "false" => false,
+            _ => false
+        };
+    }
+    
+    public Dictionary<KeyCodes, Func<string, Task<string>>> KeyCommands => new()
+    {
+        { KeyCodes.KEYCODE_HOME, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_HOME, TryParseBoolean(isLongPress)) },
+        { KeyCodes.KEYCODE_TV, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_TV, TryParseBoolean(isLongPress)) },
+        { KeyCodes.KEYCODE_BACK, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_BACK, TryParseBoolean(isLongPress)) },
+        { KeyCodes.KEYCODE_DPAD_UP, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_UP, TryParseBoolean(isLongPress)) },
+        { KeyCodes.KEYCODE_DPAD_DOWN, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_DOWN, TryParseBoolean(isLongPress)) },
+        { KeyCodes.KEYCODE_DPAD_LEFT, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_LEFT, TryParseBoolean(isLongPress)) },
+        { KeyCodes.KEYCODE_DPAD_RIGHT, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DPAD_RIGHT, TryParseBoolean(isLongPress)) },
+        { KeyCodes.KEYCODE_ENTER, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_ENTER, TryParseBoolean(isLongPress)) },
+        { KeyCodes.KEYCODE_DEL, async isLongPress => await AdbClient.SendKeyEventInput(KeyCodes.KEYCODE_DEL, TryParseBoolean(isLongPress)) },
 
         { KeyCodes.VpnOff, async _ => await SetVpnStatusAndReopenApp(false)},
         { KeyCodes.VpnOn, async _ => await SetVpnStatusAndReopenApp(true)},
         { KeyCodes.VpnStatusQuery, _ => Task.FromResult(AdbClient.IsVpnConnected().ToString()) },
+        
+        { KeyCodes.TextInput , async text => await AdbClient.SendTextInput(text)}
     };
 
     private AndroidTVApps? GetCurrentForegroundApp()

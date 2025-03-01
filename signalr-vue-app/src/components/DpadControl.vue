@@ -49,7 +49,7 @@ const getTouchDistance = (touchX: number, touchY: number) => {
 // Trigger a key action
 const handleTriggerClick = (keyCode: adbConstants.KeyCodes, isLongPress: boolean) => {
   console.log(`Key action triggered: ${keyCode}`); // Replace with your actual key press logic
-  props.handleClick?.(keyCode, isLongPress);
+  props.handleClick?.(keyCode, isLongPress.toString());
 };
 
 // Start a repeated command for swiping

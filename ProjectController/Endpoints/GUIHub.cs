@@ -5,6 +5,8 @@ using ProjectController.Controllers.Projector;
 using ProjectController.Controllers.TVControls;
 using static ProjectController.Controllers.Projector.ProjectorConstants;
 
+namespace ProjectController.Endpoints;
+
 public class GUIHub : Hub
 {
     private readonly ILogger<GUIHub> logger;
@@ -32,13 +34,13 @@ public class GUIHub : Hub
     
     public async Task IsConnectedToProjectorQuery()
     {
-          logger.LogTrace("Received: IsConnectedToProjectorQuery");
+        logger.LogTrace("Received: IsConnectedToProjectorQuery");
         await projectorConnection.SendIsConnectedToProjector();
     }
     
     public async Task IsConnectedToAndroidTVQuery()
     {
-          logger.LogTrace("Received: IsConnectedToAndroidTVQuery");
+        logger.LogTrace("Received: IsConnectedToAndroidTVQuery");
         await adbConnection.SendIsConnectedToAndroidTV(adbConnection.IsConnected);
     }
 
@@ -69,46 +71,38 @@ public class GUIHub : Hub
     
     public async Task ReceiveProjectorCommand(ProjectorCommandsEnum command)
     {
-          logger.LogTrace($"Received projector command: {command.ToString()}");
+        logger.LogTrace($"Received projector command: {command.ToString()}");
         await projectorConnection.EnqueueCommand(command);
     }
     
     public async Task ReceiveProjectorQuery(ProjectorCommandsEnum command)
     {
-          logger.LogTrace($"Received projector query: {command.ToString()}");
+        logger.LogTrace($"Received projector query: {command.ToString()}");
         await projectorConnection.EnqueueQuery(command);
     }
     
     public Task ReceiveTVCommand(IRCommands command)
     {
-          logger.LogTrace($"Received TV command: {command.ToString()}");
+        logger.LogTrace($"Received TV command: {command.ToString()}");
         IRCommandManager.SendIRCommand(command);
         return Task.CompletedTask;
     }
     
-    public async Task ReceiveAndroidCommand(KeyCodes command, bool isLongPress)
+    public async Task ReceiveAndroidCommand(KeyCodes command, string additionalParameter)
     {
-        logger.LogTrace($"Received android command: {command.ToString()} with LongPress: {isLongPress}");
-    
-        if (isLongPress)
-        {
-            await adbConnection.EnqueueLongPressCommand(command);
-        }
-        else
-        {
-            await adbConnection.EnqueueCommand(command);
-        }
+        logger.LogTrace($"Received android command: {command.ToString()} with additional parameter: {additionalParameter}");
+        await adbConnection.EnqueueCommand(command, additionalParameter);
     }
     
     public async Task ReceiveAndroidOpenAppCommand(KeyCodes command)
     {
-          logger.LogTrace($"Received open app command: {command.ToString()}");
+        logger.LogTrace($"Received open app command: {command.ToString()}");
         await adbConnection.EnqueueOpenAppCommand(command);
     }
     
     public async Task ReceiveAndroidQuery(KeyCodes command)
     {
-          logger.LogTrace($"Received android query: {command.ToString()}");
+        logger.LogTrace($"Received android query: {command.ToString()}");
         await adbConnection.EnqueueQuery(command);
     }
 }

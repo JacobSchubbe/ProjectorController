@@ -27,7 +27,7 @@ const DEFAULT_API_URL = process.env.VUE_APP_API_URL || '192.168.0.153';
 const SIGNALR_URL = `http://${DEFAULT_API_URL}:19521/GUIHub`;
 
 // SignalR Manager Class -------------------------------------------------
-class SignalRService {
+export class SignalRService {
     private connection: signalR.HubConnection;
     private pingInterval: number | undefined; // Ping interval ID
 
@@ -133,6 +133,10 @@ class SignalRService {
         this.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlVolumeQuery);
     }
     
+    queryForProjectorSettings = () => {
+        this.sendProjectorQuery(projectorConstants.ProjectorCommands.ImageControlModeQuery);
+    }
+    
     queryForInitialHdmiStatuses = () => {
         this.sendHdmiQuery()
     }
@@ -234,9 +238,9 @@ class SignalRService {
         this.invoke('ReceiveTVCommand', command);
     }
 
-    sendAndroidCommand(command: adbConstants.KeyCodes, isLongPress: boolean): void {
-        console.log(`Sending AndroidTV command: ${command} with long press: ${isLongPress}`);
-        this.invoke('ReceiveAndroidCommand', command, isLongPress);
+    sendAndroidCommand(command: adbConstants.KeyCodes, additionalParameter: string): void {
+        console.log(`Sending AndroidTV command: ${command} with additional parameter: ${additionalParameter}`);
+        this.invoke('ReceiveAndroidCommand', command, additionalParameter);
     }
 
     sendAndroidOpenAppCommand(command: adbConstants.KeyCodes): void {

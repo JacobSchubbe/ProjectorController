@@ -1,6 +1,7 @@
 using System.IO.Ports;
 using Microsoft.AspNetCore.SignalR;
 using ProjectController.Communication.Serial;
+using ProjectController.Endpoints;
 
 namespace ProjectController.Controllers.HdmiSwitch;
 
