@@ -21,6 +21,7 @@ import { defineProps } from "vue";
 const props = defineProps<{
   buttonDisabled: Boolean; // Passed down from the parent component
   handleClick: Function; // Function signature with args
+  isTouchPadInverted: Boolean;
 }>();
 
 // State variables
@@ -125,14 +126,14 @@ const handleTouchMove = (event: TouchEvent) => {
       // Horizontal swipe
       newDirection = dx > 0 ? "right" : "left";
       keyCode = dx > 0
-          ? adbConstants.KeyCodes.KEYCODE_DPAD_RIGHT
-          : adbConstants.KeyCodes.KEYCODE_DPAD_LEFT;
+          ? (props.isTouchPadInverted ? adbConstants.KeyCodes.KEYCODE_DPAD_LEFT : adbConstants.KeyCodes.KEYCODE_DPAD_RIGHT)
+          : (props.isTouchPadInverted ? adbConstants.KeyCodes.KEYCODE_DPAD_RIGHT : adbConstants.KeyCodes.KEYCODE_DPAD_LEFT);
     } else {
       // Vertical swipe
       newDirection = dy > 0 ? "down" : "up";
       keyCode = dy > 0
-          ? adbConstants.KeyCodes.KEYCODE_DPAD_DOWN
-          : adbConstants.KeyCodes.KEYCODE_DPAD_UP;
+          ? (props.isTouchPadInverted ? adbConstants.KeyCodes.KEYCODE_DPAD_UP : adbConstants.KeyCodes.KEYCODE_DPAD_DOWN)
+          : (props.isTouchPadInverted ? adbConstants.KeyCodes.KEYCODE_DPAD_DOWN : adbConstants.KeyCodes.KEYCODE_DPAD_UP);
     }
 
     // If direction changes, update and start swipe actions

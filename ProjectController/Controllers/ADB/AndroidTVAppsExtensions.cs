@@ -9,6 +9,8 @@ public enum AndroidTVApps
     Crunchyroll,
     Spotify,
     Surfshark,
+    YleAreena,
+    MtvKatsomo,
 }
 
 public static class AndroidTVAppsExtensions
@@ -29,6 +31,8 @@ public static class AndroidTVAppsExtensions
             AndroidTVApps.Crunchyroll => "com.crunchyroll.crunchyroid/.main.ui.MainActivity",
             AndroidTVApps.Spotify => "com.spotify.tv.android/.SpotifyTVActivity",
             AndroidTVApps.Surfshark => "com.surfshark.vpnclient.android/.StartActivity",
+            AndroidTVApps.YleAreena => "com.yle.webtv/fi.yle.areena.leanback.ui.LaunchActivity",
+            AndroidTVApps.MtvKatsomo => "fi.mtvkatsomo/se.tv4.tv4play.ui.common.startup.SplashActivity",
             _ => throw new ArgumentOutOfRangeException(nameof(app), app, "Unknown app selected.")
         };
     }

@@ -322,7 +322,9 @@ public enum KeyCodes : int
     Crunchyroll = 10007,
     Surfshark = 10008,
     Spotify = 10009,
-    
+    YleAreena = 10014,
+    MtvKatsomo = 10015,
+
     VpnOn = 10010,
     VpnOff = 10011,
     VpnStatusQuery = 10012,

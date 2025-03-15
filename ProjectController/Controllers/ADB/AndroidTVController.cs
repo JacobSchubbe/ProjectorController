@@ -96,6 +96,8 @@ public class AndroidTVController
             KeyCodes.Crunchyroll => AndroidTVApps.Crunchyroll,
             KeyCodes.Surfshark => AndroidTVApps.Surfshark,
             KeyCodes.Spotify => AndroidTVApps.Spotify,
+            KeyCodes.YleAreena => AndroidTVApps.YleAreena,
+            KeyCodes.MtvKatsomo => AndroidTVApps.MtvKatsomo,
             _ => throw new NotImplementedException()
         };
         

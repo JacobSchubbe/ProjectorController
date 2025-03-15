@@ -208,13 +208,15 @@ public class AdbController
     {
         await (app switch
         {
-            AndroidTVApps.YouTube => ExecuteOpenApp(AndroidTVApps.YouTube),
-            AndroidTVApps.Netflix => ExecuteOpenApp(AndroidTVApps.Netflix),
-            AndroidTVApps.AmazonPrime => ExecuteOpenApp(AndroidTVApps.AmazonPrime),
-            AndroidTVApps.DisneyPlus => ExecuteOpenApp(AndroidTVApps.DisneyPlus),
-            AndroidTVApps.Crunchyroll => ExecuteOpenApp(AndroidTVApps.Crunchyroll),
-            AndroidTVApps.Spotify => ExecuteOpenApp(AndroidTVApps.Spotify),
-            AndroidTVApps.Surfshark => ExecuteOpenApp(AndroidTVApps.Surfshark),
+            AndroidTVApps.YouTube => ExecuteOpenApp(app),
+            AndroidTVApps.Netflix => ExecuteOpenApp(app),
+            AndroidTVApps.AmazonPrime => ExecuteOpenApp(app),
+            AndroidTVApps.DisneyPlus => ExecuteOpenApp(app),
+            AndroidTVApps.Crunchyroll => ExecuteOpenApp(app),
+            AndroidTVApps.Spotify => ExecuteOpenApp(app),
+            AndroidTVApps.Surfshark => ExecuteOpenApp(app),
+            AndroidTVApps.YleAreena => ExecuteOpenApp(app),
+            AndroidTVApps.MtvKatsomo => ExecuteOpenApp(app),
             _ => throw new ArgumentOutOfRangeException(nameof(app), app, $"App {app} is not mapped to any command.")
         });
     }

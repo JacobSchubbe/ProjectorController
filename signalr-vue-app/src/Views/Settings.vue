@@ -18,7 +18,14 @@
       <label for="dark-mode-toggle">Dark Mode:</label>
       <Toggle
           id="dark-mode-toggle"
-          v-model="isDarkMode"
+          v-model:isChecked="localIsDarkMode"
+      />
+    </div>
+    <div class="settings-item">
+      <label for="dark-mode-toggle">Invert Touch Pad:</label>
+      <Toggle
+          id="touch-pad-inverted-toggle"
+          v-model:isChecked="localIsTouchPadInverted"
       />
     </div>
   </div>
@@ -43,6 +50,16 @@ export default defineComponent({
       required: true,
       default: -1,
     },
+    isDarkMode: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    isTouchPadInverted: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
     buttonDisabled: {
       type: Boolean,
       required: true,
@@ -61,12 +78,19 @@ export default defineComponent({
         { value: projectorConstants.ProjectorCommands.ImageControlGameMode, label: 'Game' },
       ],
       localSelectedOption: this.selectedOption,
-      isDarkMode: false,
+      localIsDarkMode: this.isDarkMode,
+      localIsTouchPadInverted: this.isTouchPadInverted,
     };
   },
   watch: {
     selectedOption(newValue) {
       this.localSelectedOption = newValue;
+    },
+    localIsDarkMode(newValue) {
+      this.$emit('update:isDarkMode', newValue);
+    },
+    localIsTouchPadInverted(newValue) {
+      this.$emit('update:isTouchPadInverted', newValue);
     },
   },
   methods: {
