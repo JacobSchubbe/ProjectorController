@@ -192,6 +192,7 @@ public class ProjectorController
             case ProjectorCommandsEnum.SystemControlSourceHDMI3:
             case ProjectorCommandsEnum.SystemControlSourceHDMILAN:
                 logger.LogDebug($"Sending updated source to all clients: {commandType.ToString()}.");
+                await EnqueueQuery(ProjectorCommandsEnum.ImageControlBrightnessQuery);
                 await SendQueryResponse(ProjectorCommandsEnum.SystemControlSourceQuery, commandType);
                 break;
             case ProjectorCommandsEnum.SystemControlVolumeUp:

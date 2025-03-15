@@ -55,11 +55,10 @@ public class GUIHub : Hub
         if (input == Inputs.SmartTV)
         {
             await ReceiveProjectorCommand(ProjectorCommandsEnum.SystemControlSourceHDMI3);
+            return;
         }
-        else
-        {
-            await ReceiveProjectorCommand(ProjectorCommandsEnum.SystemControlSourceHDMI1);
-        }
+
+        await ReceiveProjectorCommand(ProjectorCommandsEnum.SystemControlSourceHDMI1);
         await hdmiSwitchController.SetInputHdmi(input);
     }
     

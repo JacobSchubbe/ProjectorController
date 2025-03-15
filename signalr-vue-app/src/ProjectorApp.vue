@@ -45,23 +45,26 @@
     <!-- Tab Content Section -->
     <div class="content-container">
       <AndroidTVButtons
-          v-if="selectedTab === 'adb'"
+          v-if="state.selectedTab === 'adb'"
+          v-model:isTouchPadInverted="state.isTouchPadInverted"
           :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidCommand"
           :SignalRInstance="SignalRInstance"
       />
       <AndroidAppsTab
-          v-if="selectedTab === 'apps'"
+          v-if="state.selectedTab === 'apps'"
           :buttonDisabled="buttonDisabledWhenPoweredOffOrNotConnectedToAndroidTV"
           :handleClick="handleClickAndroidOpenAppCommand"
           :apps="availableApps"
       />
       <TvCommandsTab
-          v-if="selectedTab === 'tv'"
+          v-if="state.selectedTab === 'tv'"
           :handleClick="handleClickTVCommand"
       />
       <SettingsTab
-          v-if="selectedTab === 'settings'"
+          v-if="state.selectedTab === 'settings'"
+          v-model:isDarkMode="state.isDarkMode"
+          v-model:isTouchPadInverted="state.isTouchPadInverted"
           :selectedOption="state.selectedImageMode"
           :buttonDisabled="buttonDisabledWhenPoweredOff"
           :SignalRInstance="SignalRInstance"
@@ -81,8 +84,8 @@
         <button
             v-for="tab in filteredTabs"
             :key="tab.value"
-            :class="[(tab.class ? tab.class : 'tab-button'), { active: selectedTab === tab.value }]"            
-            @click="selectedTab = tab.value"
+            :class="[(tab.class ? tab.class : 'tab-button'), { active: state.selectedTab === tab.value }]"            
+            @click="state.selectedTab = tab.value"
         >
           <img v-if="tab.icon" :src="tab.icon" :alt="tab.label" class="tab-icon" />
           <span>{{ tab.label }}</span>
@@ -107,6 +110,7 @@ import VolumeSlider from "@/components/VolumeSlider.vue";
 import { useProjector } from "@/composables/useProjector";
 import * as adbConstants from "@/Constants/AdbConstants";
 import * as hdmiSwitchConstants from "@/Constants/HdmiSwitchConstants";
+import Cookies from 'js-cookie';
 
 const filteredTabs = computed(() => {
   return tabs.value.filter((tab) => !tab.hidden);
@@ -155,7 +159,7 @@ const tabs = ref([
   { label: "SmartTV", value: "adb" },
   { label: "Apps", value: "apps" },
   { label: "TV Commands", value: "tv" },
-  { label: "", value: "settings", icon: "/assets/settings.png", class: "tab-button-with-icon", hidden: buttonDisabledWhenPoweredOff }
+  { label: "", value: "settings", icon: "/assets/settings.png", class: "tab-button-with-icon", hidden: !buttonDisabledWhenPoweredOff }
 ]);
 
 const availableApps = ref([
@@ -166,11 +170,35 @@ const availableApps = ref([
   { icon: "/assets/spotify-logo.png", alt: "Spotify", action: adbConstants.KeyCodes.Spotify },
   { icon: "/assets/crunchyroll-logo.png", alt: "Crunchyroll", action: adbConstants.KeyCodes.Crunchyroll },
   { icon: "/assets/surfshark-logo.svg", alt: "Surfshark", action: adbConstants.KeyCodes.Surfshark },
+  { icon: "/assets/yle-areena-logo.jpg", alt: "YleAreena", action: adbConstants.KeyCodes.YleAreena }, 
+  { icon: "/assets/mtv-katsomo-logo.png", alt: "MtvKatsomo", action: adbConstants.KeyCodes.MtvKatsomo },
 ]);
 
-const selectedTab = ref("adb");
+const saveUserPreferencesToCookies = () => {
+  const userSettings = {
+    currentTab: state.selectedTab,
+    isDarkMode: state.isDarkMode,
+    isTouchPadInverted: state.isTouchPadInverted,
+  };
+  Cookies.set('userPreferences', JSON.stringify(userSettings), { expires: 7 });
+  console.log("User preferences saved to cookies.");
+};
+
+const loadUserPreferencesFromCookies = () => {
+  const savedPreferences = Cookies.get('userPreferences');
+  if (savedPreferences) {
+    console.log(`Loading user preferences from cookies: ${savedPreferences}`);
+    const userSettings = JSON.parse(savedPreferences);
+    state.selectedTab = userSettings.currentTab;
+    state.isDarkMode = userSettings.isDarkMode;
+    state.isTouchPadInverted = userSettings.isTouchPadInverted;
+  }
+  console.log("User preferences loaded from cookies.");
+};
 
 onMounted(async () => {
+  console.log("App mounted. Setting up tab focus listener.");
+  loadUserPreferencesFromCookies();
   await SignalRInstance.initialize(
       (isConnected) => { handleProjectorConnectionStateChange(isConnected); },
       (isConnected) => { handleAndroidTVConnectionStateChange(isConnected); },
@@ -179,19 +207,18 @@ onMounted(async () => {
       (response) => { handleProjectorQueryResponse(response.queryType, response.currentStatus); },
       (connectionStatus) => { handleGUIConnectionStateChange(connectionStatus); }
   );
-});
-
-onMounted(() => {
-  console.log("App mounted. Setting up tab focus listener.");
   window.addEventListener("focus", onTabFocused);
+  window.addEventListener('beforeunload', saveUserPreferencesToCookies);
 });
 
 onUnmounted(() => {
   console.log("App unmounted. Removing tab focus listener.");
   window.removeEventListener("focus", onTabFocused);
+  window.removeEventListener('beforeunload', saveUserPreferencesToCookies);
 });
 
 const onTabFocused = () => {
+  saveUserPreferencesToCookies();
   if (!SignalRInstance.isConnected()) {
     console.log("Tab regained focus. Reconnecting SignalR...");
     SignalRInstance.initialize(

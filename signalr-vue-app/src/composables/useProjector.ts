@@ -7,8 +7,11 @@ import * as tvConstants from "@/Constants/TVConstants";
 
 export function useProjector() {
   const state = reactive({
+    selectedTab: "adb",
     selectedInput: -1,
     selectedImageMode: -1,
+    isDarkMode: false,
+    isTouchPadInverted: false,
     targetVolume: 0,
     GUIConnected: false,
     ProjectorConnected: false,
@@ -141,6 +144,10 @@ export function useProjector() {
       state.ProjectorPoweredOn = projectorConstants.ToggleStatusGui.Pending;
       state.VPNConnected = projectorConstants.ToggleStatusGui.Pending;
       state.ProjectorConnected = false;
+      if (state.selectedTab == "settings")
+      {
+        state.selectedTab = "adb";
+      }
     }
   }
 
@@ -169,6 +176,10 @@ export function useProjector() {
           console.log("Waiting for power off...");
           SignalRInstance.sendProjectorQuery(projectorConstants.ProjectorCommands.SystemControlPowerQuery)
           await new Promise(resolve => setTimeout(resolve, 4000));
+        }
+        if (state.selectedTab == "settings")
+        {
+          state.selectedTab = "adb";
         }
         console.log("Power off complete");
         break;

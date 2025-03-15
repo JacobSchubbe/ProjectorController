@@ -16,6 +16,7 @@
       </ControlButton>
     </div>
     <Dpad :buttonDisabled="buttonDisabled"
+          :isTouchPadInverted="isTouchPadInverted"
           :handleClick="(keyCode, isLongPress) => handleClick(keyCode, isLongPress)"/>
   </div>
 </template>
@@ -31,6 +32,7 @@ defineProps<{
   buttonDisabled: Boolean; // Passed down from the parent component
   handleClick: Function;     // Function to handle button clicks
   SignalRInstance: any;
+  isTouchPadInverted: Boolean;
 }>();
 
 
